@@ -1,5 +1,5 @@
 name: schema
-title: schema - outils sur les schema JSON appliqués à Yaml
+title: schema - classe de schema JSON permettant de vérifier la conformité d'une instance à un schéma JSON
 doc: |
   Projet autour de l'utilisation de schema JSON
   https://json-schema.org/
@@ -9,4 +9,4 @@ journal: |
 phpScripts:
   - /schema/index.php
 phpIncludes:
-  - /schema/schemacheck.inc.php
+  - /schema/jsonschema.inc.php

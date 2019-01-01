@@ -1,4 +1,12 @@
 <?php
+/*PhpDoc:
+name: index.php
+title: index.php - test de la classe JsonSchema
+doc: |
+journal: |
+  1/1/2019
+    première version
+*/
 require_once __DIR__.'/../vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
