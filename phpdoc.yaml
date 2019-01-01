@@ -1,0 +1,12 @@
+name: schema
+title: schema - outils sur les schema JSON appliqués à Yaml
+doc: |
+  Projet autour de l'utilisation de schema JSON
+  https://json-schema.org/
+journal: |
+  31/12/2018:
+    création de ce projet
+phpScripts:
+  - /schema/index.php
+phpIncludes:
+  - /schema/schemacheck.inc.php

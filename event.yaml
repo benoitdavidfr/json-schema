@@ -1,0 +1,67 @@
+json-schema:  {
+    "$id": "https://example.com/event.schema.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "description": "A representation of an event",
+    "type": "object",
+    "required": [ "dtstart", "summary" ],
+    "properties": {
+      "dtstart": {
+        "type": "string",
+        "description": "Event starting time"
+      },
+      "dtend": {
+        "type": "string",
+        "description": "Event ending time"
+      },
+      "summary": {
+        "type": "string"
+      },
+      "location": {
+        "type": "string"
+      },
+      "url": {
+        "type": "string"
+      },
+      "duration": {
+        "type": "string",
+        "description": "Event duration"
+      },
+      "rdate": {
+        "type": "string",
+        "description": "Recurrence date"
+      },
+      "rrule": {
+        "type": "string",
+        "description": "Recurrence rule"
+      },
+      "category": {
+        "type": "string"
+      },
+      "description": {
+        "type": "string"
+      },
+      "geox": {
+        "$ref": "http://localhost/schema/geo.yaml#/json-schema"
+      }
+      "geoy": {
+        "$ref": "http://localhost/schema/geo.schema.json"
+      }
+      "geoz": {
+        "$ref": "geo.schema.json"
+      }
+    }
+  }
+data:
+  dtstart: 2019-01-01
+  summary: nouvelle année
+  geox:
+    "latitude": 48.858093
+    "longitude": 2.294694
+  geoy:
+    "latitude": 48.858093
+    "longitude": 2.294694
+  geoz:
+    "latitude": 48.858093
+    "longitude": 2.294694
+    
+  

@@ -1,0 +1,21 @@
+{
+  "json-schema":  {
+    "definitions": {
+      "alice": {
+        "anyOf": [
+          { "$ref": "#/definitions/bob" }
+        ]
+      },
+      "bob": {
+        "anyOf": [
+          { "$ref": "#/definitions/fred" }
+        ]
+      },
+      "fred": {
+        "anyOf": [
+          { "$ref": "#/definitions/alice" }
+        ]
+      }
+    }
+  }
+}
