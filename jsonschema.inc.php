@@ -11,6 +11,11 @@ doc: |
     - une erreur de contenu d'instance produit une erreur et fait échouer la vérification
     - une alerte produit une alerte et ne fait pas échouer la vérification 
 journal: |
+  2/1/2019
+    ajout oneOf
+    correction du test d'une propriété requise qui prend la valeur nulle
+    correction de divers bugs détectés par les tests sur des exemples de GeoJSON
+    assouplissement de la détection dans $ref au premier niveau d'un schema
   1/1/2019
     première version
     il manque:
@@ -26,7 +31,6 @@ journal: |
       - maxItems (array)
       - uniqueItems (array)
       - allOf (schema)
-      - oneOf (schema)
       - not (schema)
       - length (string)
       - pattern (string)
@@ -62,7 +66,7 @@ function subObject(array $object, string $path): array {
 
 // la classe JsonSchema correspond à la définition d'un schema JSON
 class JsonSchema {
-  const VERBOSE = true;
+  const VERBOSE = false;
   private $schema=null; // le schema courant sous la forme d'un array
   private $root=null; // le schema initial comme objet Schema, utilisé pour rechercher les définitions
   private $warnings=[]; // liste des warnings (les warnings et les erreurs sont enregistrées dans le schema racine)
@@ -143,15 +147,18 @@ class JsonSchema {
     if (self::VERBOSE)
       echo "check(",json_encode(['instance'=> $instance, 'id'=>$id]),")",
            "@schema=",json_encode($this->schema),"<br><br>\n";
-    if (is_array($this->schema) && (count($this->schema)==1) && (array_keys($this->schema)[0]=='$ref'))
+    if (!is_array($this->schema))
+      throw new Exception("schema non défini pour $id comme array, schema=".json_encode($this->schema));
+    elseif (isset($this->schema['$ref']))
       return $this->checkRef($id, $instance);
-    elseif (isset($this->schema['anyOf']))
+    elseif (isset($this->schema['anyOf']) || isset($this->schema['oneOf']))
       return $this->checkAnyOf($id, $instance);
     elseif (!isset($this->schema['type']))
       throw new Exception("schema[type] non défini pour $id, schema=".json_encode($this->schema));
     elseif (!is_string($this->schema['type'])) {
       if (!is_array($this->schema['type']))
-        throw new Exception("schema[type]=".json_encode($this->schema['type'])." défini ni comme string ni comme list pour $id");
+        throw new Exception("schema[type]=".json_encode($this->schema['type'])
+                            ." défini ni comme string ni comme list pour $id");
       $anyOf = [];
       foreach ($this->schema['type'] as $type) {
         if (!is_string($type))
@@ -203,12 +210,13 @@ class JsonSchema {
     return $schema->check($instance, $id);
   }
   
-  // traitement du cas où le schema est défini par un anyOf
+  // traitement du cas où le schema est défini par un anyOf ou un oneOf
   private function checkAnyOf(string $id, $instance): bool {
     if (self::VERBOSE)
       echo "checkAnyOf(",json_encode(['instance'=> $instance, 'id'=>$id]),")",
            "@schema=",json_encode($this->schema),"<br><br>\n";
-    foreach ($this->schema['anyOf'] as $schemaDef) {
+    $anyOf = isset($this->schema['oneOf']) ? $this->schema['oneOf'] : $this->schema['anyOf'];
+    foreach ($anyOf as $schemaDef) {
       $schema = new JsonSchema($schemaDef);
       if ($schema->check($instance, $id))
         return true;
@@ -216,7 +224,7 @@ class JsonSchema {
     return $this->setError("aucun schema anyOf pour $id");
   }
   
-  // traitement du cas où le type indique que la valeur est un object
+  // traitement du cas où le type indique que l'instance est un object
   private function checkObject(string $id, $instance): bool {
     if (!is_array($instance))
       return $this->setError("$id !object");
@@ -225,17 +233,18 @@ class JsonSchema {
     // vérification que les propriétés obligatoires sont définies
     if (isset($this->schema['required'])) {
       foreach ($this->schema['required'] as $prop) {
-        if (!isset($instance[$prop]))
+        if (!array_key_exists($prop, $instance))
           $status = $this->setError("propriété $id.$prop absente");
       }
     }
     // vérification que les propriétés de l'objet sont définies dans le schéma
-    if ($undef = array_diff(array_keys($instance), array_keys($this->schema['properties'])))
+    $properties = isset($this->schema['properties']) ? array_keys($this->schema['properties']) : [];
+    if ($undef = array_diff(array_keys($instance), $properties))
       $this->setWarning("Attention: propriétés ".implode(', ',$undef)." de $id non définie(s) par le schéma");
     // vérification des caractéristiques de chaque propriété
     foreach ($instance as $prop => $pvalue) {
       if ($schProp = $this->schemaOfProperty($prop)) {
-        $status2 = $schProp->check($pvalue, "$id.$prop");
+        $status2 = $schProp->check($pvalue, "$id.$prop"); // nécessaire pour ne pas s'arrêter à la première erreur
         $status = $status && $status2;
       }
     }
@@ -269,7 +278,7 @@ class JsonSchema {
     return $status;
   }
   
-  // traitement du cas où le type indique que la valeur est un numérique ou un entier
+  // traitement du cas où le type indique que l'instance est un numérique ou un entier
   private function checkNumberOrInteger(string $id, $instance): bool {
     if (($this->schema['type']=='number') && (is_string($instance) || !is_numeric($instance)))
       return $this->setError("Erreur $id=".json_encode($instance)." !number");
@@ -287,7 +296,7 @@ class JsonSchema {
     return $status;
   }
   
-  // traitement du cas où le type indique que la valeur est une chaine
+  // traitement du cas où le type indique que l'instance est une chaine
   // les dates sont considérées comme des chaines de caractères
   private function checkString(string $id, $instance): bool {
     if (!is_string($instance) && !(is_object($instance) && (get_class($instance)=='DateTime')))
@@ -300,7 +309,7 @@ class JsonSchema {
     return true;
   }
   
-  // traitement du cas où le type indique que la valeur est un booléen
+  // traitement du cas où le type indique que l'instance est un booléen
   private function checkBoolean(string $id, $instance): bool {
     if (is_bool($instance))
       return true;
@@ -308,11 +317,11 @@ class JsonSchema {
       return $this->setError("Erreur $id.$prop=$instance !boolean");
   }
   
-  // traitement du cas où le type indique que la valeur est null
+  // traitement du cas où le type indique que l'instance est null
   private function checkNull(string $id, $instance): bool {
     if (is_null($instance))
       return true;
     else
-      return $this->setError("Erreur $id.$prop=$instance !null");
+      return $this->setError("Erreur $id=".json_encode($instance)." !null");
   }
 };

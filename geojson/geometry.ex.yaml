@@ -1,0 +1,32 @@
+title: exemples d'instances de geometry GeoJSON
+json-schema:
+  $schema: http://json-schema.org/draft-07/schema#
+  $id: http://geojson.org/schema/geometry.ex.yaml
+  title: tableau de Geometry GeoJSON
+  type: array
+  items:
+    $ref: http://localhost/schema/geojson/geometry.yaml
+data:
+#  - type: XXX
+  - type: Point
+    coordinates: [ 2.24, 48.34 ]
+  - type: LineString
+    coordinates:
+      - [ 2.24, 48.34 ]
+      - [ 2.26, 48.30 ]
+  - type: LineString
+    coordinates: [ [2.24,48.34], [2.26,48.30] ]
+  - type: Polygon
+    coordinates:
+      -
+        - [ 2.24, 48.34 ]
+        - [ 2.26, 48.30 ]
+        - [ 2.26, 48.26 ]
+        - [ 2.24, 48.34 ]
+  - type: Polygon
+    coordinates:
+      - [ [2.24,48.34], [2.26,48.30], [2.26,48.26], [2.24,48.34] ]
+  - type: MultiPolygon
+    coordinates:
+      -
+        - [ [2.24,48.34], [2.26,48.30], [2.26,48.26], [2.24,48.34] ]
