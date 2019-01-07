@@ -34,7 +34,8 @@ json-schema:  {
     }
   }
 data:
-  fruits: [ "apple", "orange", "pear" ]
+  fruitsx: [ "apple", "orange", "pear" ]
+  fruits: { 1: apple, 3: orange, a: pear}
   vegetables:
     - veggieNam: potato
       veggieLike: true

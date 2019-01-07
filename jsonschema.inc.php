@@ -10,58 +10,107 @@ doc: |
     - une erreur de contenu de schéma génère une exception
     - une erreur de contenu d'instance produit une erreur et fait échouer la vérification
     - une alerte produit une alerte et ne fait pas échouer la vérification 
+  il manque:
+    - additionalProperties (object)
+    - propertyNames (object)
+    - minProperties (object)
+    - maxProperties (object)
+    - dependencies (object)
+    - contains (array)
+    - Tuple validation (array)
+    - minItems (array)
+    - maxItems (array)
+    - uniqueItems (array)
+    - allOf (schema)
+    - not (schema)
+    - length (string)
+    - pattern (string)
+    - format (string)
+    - multiple (number)
 journal: |
+  7/1/2019:
+    BUG trouvé dans l'utilisation d'une définition dans un oneOf,
+    oneOf coupe le lien vers le schema racine pour éviter d'enregistrer les erreurs
+    alors que les référence vers une définition a besoin de ce lien
+    voir http://localhost/schema/?action=check&file=ex/route500
+  3/1/2019
+    les fonctions complémentaires ne sont définies que si elles ne le sont pas déjà
+    correction bug
   2/1/2019
     ajout oneOf
     correction du test d'une propriété requise qui prend la valeur nulle
     correction de divers bugs détectés par les tests sur des exemples de GeoJSON
     assouplissement de la détection dans $ref au premier niveau d'un schema
+    ajout d'un mécanisme de tests unitaires
+    ajout patternProperties et test sur http://localhost/yamldoc/?doc=dublincoreyd&ypath=%2Ftables%2Fdcmes%2Fdata
   1/1/2019
     première version
-    il manque:
-      - additionalProperties (object)
-      - propertyNames (object)
-      - minProperties (object)
-      - maxProperties (object)
-      - dependencies (object)
-      - patternProperties (object)
-      - contains (array)
-      - Tuple validation (array)
-      - minItems (array)
-      - maxItems (array)
-      - uniqueItems (array)
-      - allOf (schema)
-      - not (schema)
-      - length (string)
-      - pattern (string)
-      - format (string)
-      - multiple (number)
 */
+require_once __DIR__.'/../vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 // sélection d'un sous-objet de l'objet $object défini par le path $path
-function subObjectInt(array $object, string $path): array {
-  if (!$path)
-    return $object;
-  if (!preg_match('!^/([^/]+)!', $path, $matches)) {
-    echo "Erreur path '$path' mal formé dans subObjectInt()<br>\n";
-    return [];
+if (!function_exists('subObject')) {
+  function subObject(array $object, string $path) {
+    if (!$path)
+      return $object;
+    if (!preg_match('!^/([^/]+)!', $path, $matches))
+      throw new Exception("Erreur path '$path' mal formé dans subObject()");
+    $first = $matches[1];
+    $path = substr($path, strlen($first)+1);
+    if (isset($object[$first])) {
+      if (!$path)
+        return $object[$first];
+      else
+        return subObject($object[$first], $path);
+    }
+    else {
+      echo "Erreur le sous-objet $first n'existe pas dans subObject()<br>\n";
+      return [];
+    }
   }
-  $first = $matches[1];
-  $path = substr($path, strlen($first)+1);
-  if (isset($object[$first]))
-    return subObject($object[$first], $path);
-  else {
-    echo "Erreur le sous-objet $first n'existe pas dans subObject()<br>\n";
-    return [];
+  function subObjectC(array $object, string $path) { // appel de subObject() commenté 
+    echo "subObject(",json_encode(['object'=>$object,'path'=>$path]),")<br>\n";
+    $result = subObject($object, $path);
+    echo "returns: ",json_encode($result),"<br>\n";
+    return $result;
+  }
+
+  if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de subObject 
+    if (isset($_GET['test']) && ($_GET['test']=='subObject')) {
+      echo "Test subObject<br>\n";
+      $object = ['a'=>'a', 'b'=> ['c'=> 'bc', 'd'=> ['e'=> 'bde']]];
+      subObjectC($object, '/b');
+      subObjectC($object, '/b/d');
+      subObjectC($object, '/x');
+      subObjectC($object, '/a');
+      echo "FIN test subObject<br><br>\n";
+    }
+    $unitaryTests[] = 'subObject';
   }
 }
-function subObject(array $object, string $path): array {
-  //echo "subObject(",json_encode(['object'=>$object,'path'=>$path]),")<br>\n";
-  $result = subObjectInt($object, $path);
-  //echo "returns: ",json_encode($result),"<br>\n";
-  return $result;
+
+// test si un array est un tableau associatif ou une liste
+if (!function_exists('is_assoc_array')) {
+  function is_assoc_array(array $array): bool { return count(array_diff_key($array, array_keys(array_keys($array)))); }
+  function is_assoc_arrayC(array $array): bool { // Appel de is_assoc_array commenté 
+    print_r($array);
+    $r = is_assoc_array($array);
+    echo $r ? 'is_assoc_array' : '<b>! is_assoc_array</b>', "<br>\n";
+    return $r;
+  }
+
+  if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_assoc_array 
+    if (isset($_GET['test']) && ($_GET['test']=='is_assoc_array')) {
+      echo "Test is_assoc_array<br>\n";
+      is_assoc_arrayC([1, 5]);
+      is_assoc_arrayC([1=>1, 5=>5]);
+      is_assoc_arrayC([1=>1, 5=>5, 7=>7]);
+      echo "FIN test is_assoc_array<br><br>\n";
+    }
+    $unitaryTests[] = 'is_assoc_array';
+  }
 }
 
 // la classe JsonSchema correspond à la définition d'un schema JSON
@@ -133,8 +182,17 @@ class JsonSchema {
   
   // le schema d'une des propriétés de l'object ou null
   private function schemaOfProperty(string $propname): ?JsonSchema {
-    return (!isset($this->schema['properties'][$propname]) || !$this->schema['properties'][$propname]) ? null
-      : new self($this->schema['properties'][$propname], $this->root);
+    if (isset($this->schema['properties'][$propname]) && $this->schema['properties'][$propname])
+      return new self($this->schema['properties'][$propname], $this->root);
+    elseif (isset($this->schema['patternProperties'])) {
+      foreach ($this->schema['patternProperties'] as $pattern => $property) {
+        if (preg_match("!$pattern!", $propname)) {
+          return new self($property, $this->root);
+        }
+      }
+      $this->setWarning("No pattern matched by property '$propname' in JsonSchema::schemaOfProperty()");
+    }
+    return null;
   }
   
   // le schema des composants de l'array ou null
@@ -181,14 +239,14 @@ class JsonSchema {
     elseif ($this->schema['type']=='null')
       return $this->checkNull($id, $instance);
     else
-      throw new Exception("type $this->schema[type] non traité");
+      throw new Exception("type ".json_encode($this->schema['type'])." non traité");
   }
   
   // traitement du cas où le schema est défini par une référence
   private function checkRef(string $id, $instance): bool {
     if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $this->schema['$ref'], $matches))
       throw new Exception("Référence ".$this->schema['$ref']." non comprise dans JsonSchema::checkRef()");
-      //print_r($matches);
+    //echo "matches="; print_r($matches);
     $filepath = $matches[1];
     $eltpath = isset($matches[4]) ? $matches[4] : null;
     if ($filepath) {
@@ -204,8 +262,10 @@ class JsonSchema {
     if ($eltpath)
       $schema = subObject($schema, $eltpath);
     //echo "<pre>",Yaml::dump($schema, 999),"</pre>\n";
-    if (!$schema)
+    if (!$schema) {
+      //echo "<pre>schema=",Yaml::dump($schema, 999),"</pre>\n";
       throw new Exception("$filepath$eltpath ne correspond à un schéma dans JsonSchema::checkRef()");
+    }
     $schema = new JsonSchema($schema, $this->root);
     return $schema->check($instance, $id);
   }
@@ -226,7 +286,7 @@ class JsonSchema {
   
   // traitement du cas où le type indique que l'instance est un object
   private function checkObject(string $id, $instance): bool {
-    if (!is_array($instance))
+    if (!is_array($instance) || !is_assoc_array($instance))
       return $this->setError("$id !object");
     
     $status = true;
@@ -237,10 +297,12 @@ class JsonSchema {
           $status = $this->setError("propriété $id.$prop absente");
       }
     }
-    // vérification que les propriétés de l'objet sont définies dans le schéma
-    $properties = isset($this->schema['properties']) ? array_keys($this->schema['properties']) : [];
-    if ($undef = array_diff(array_keys($instance), $properties))
-      $this->setWarning("Attention: propriétés ".implode(', ',$undef)." de $id non définie(s) par le schéma");
+    // vérification que les propriétés de l'objet sont définies dans le schéma si patternProperties non défini
+    if (!isset($this->schema['patternProperties'])) {
+      $properties = isset($this->schema['properties']) ? array_keys($this->schema['properties']) : [];
+      if ($undef = array_diff(array_keys($instance), $properties))
+        $this->setWarning("Attention: propriétés ".implode(', ',$undef)." de $id non définie(s) par le schéma");
+    }
     // vérification des caractéristiques de chaque propriété
     foreach ($instance as $prop => $pvalue) {
       if ($schProp = $this->schemaOfProperty($prop)) {
@@ -251,25 +313,17 @@ class JsonSchema {
     return $status;
   }
   
-  // vérification que le tableau $keys correspond à la suite des premiers entiers à partir de $ind 
-  static private function is_first_integers(array $keys, int $ind=0): bool {
-    //echo "is_first_integers(keys=",json_encode($keys),", ind=$ind)<br>\n";
-    if (!$keys)
-      return true;
-    if (array_shift($keys) !== $ind)
-      return false;
-    return self::is_first_integers($keys, $ind+1);
-  }
-
   // traitement du cas où le type indique que la valeur est un object
   private function checkArray(string $id, $instance): bool {
     if (self::VERBOSE)
       echo "checkArray(",json_encode(['id'=>$id, 'instance'=> $instance]),")",
            "@schema=",json_encode($this->schema),"<br><br>\n";
     
-    if (!is_array($instance) || !self::is_first_integers(array_keys($instance)))
+    if (!is_array($instance) || is_assoc_array($instance))
       return $this->setError("$id !array");
     $schOfItem = $this->schemaOfItem();
+    if (!$schOfItem)
+      return true;
     $status = true;
     foreach ($instance as $i => $elt) {
       $status2 = $schOfItem->check($elt, "$id.$i");
@@ -325,3 +379,26 @@ class JsonSchema {
       return $this->setError("Erreur $id=".json_encode($instance)." !null");
   }
 };
+
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSchema 
+  if (isset($_GET['test']) && ($_GET['test']=='JsonSchema')) {
+    echo "Test JsonSchema<br>\n";
+    $schema = new JsonSchema(['type'=> 'string']);
+    if ($schema->check('Test')) {
+      $schema->showWarnings();
+      echo "ok<br>\n";
+    }
+    else
+      $schema->showErrors();
+    echo "FIN test JsonSchema<br><br>\n";
+  }
+  $unitaryTests[] = 'JsonSchema';
+}
+
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Menu des tests unitaires 
+  echo "Tests unitaires:<ul>\n";
+  foreach ($unitaryTests as $unitaryTest)
+    echo "<li><a href='?test=$unitaryTest'>$unitaryTest</a>\n";
+  die("</ul>\nFIN tests unitaires");
+}
+

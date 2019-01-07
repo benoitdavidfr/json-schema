@@ -2,12 +2,13 @@ title: exemples d'instances de geometry GeoJSON
 json-schema:
   $schema: http://json-schema.org/draft-07/schema#
   $id: http://geojson.org/schema/geometry.ex.yaml
-  title: tableau de Geometry GeoJSON
+  title: liste de potentielles Geometry GeoJSON
   type: array
   items:
     $ref: http://localhost/schema/geojson/geometry.yaml
 data:
-#  - type: XXX
+  - type: XXX
+  - null
   - type: Point
     coordinates: [ 2.24, 48.34 ]
   - type: LineString

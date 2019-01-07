@@ -1,9 +1,12 @@
 name: schema
 title: schema - classe de schema JSON permettant de vérifier la conformité d'une instance à un schéma JSON
 doc: |
-  Projet autour de l'utilisation de schema JSON
+  Utilisation de schema JSON
   https://json-schema.org/
+  transfert des exemples dans ex et geojson
 journal: |
+  1-2/1/2019:
+    améliorations de jsonschema.inc.php et gestion d'exemples
   31/12/2018:
     création de ce projet
 phpScripts:

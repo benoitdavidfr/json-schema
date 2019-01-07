@@ -62,17 +62,21 @@ if ($_GET['action'] == 'check') {
 
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
-  if (isset($content['json-schema'])) {
-    $schema = new JsonSchema($content['json-schema']);
+  if ($key = isset($content['json-schema']) ? 'json-schema' : (isset($content['schema']) ? 'schema' : null)) {
+    $schema = new JsonSchema($content[$key]);
     if (isset($content['data'])) {
       if ($schema->check($content['data'])) {
         $schema->showWarnings();
-        echo "ok<br>\n";
+        echo "ok instance conforme au schéma<br>\n";
       }
       else
         $schema->showErrors();
     }
+    else
+      echo "Pas d'instance trouvée dans le fichier<br>\n";
   }
+  else
+    echo "Pas de schema trouvé dans le fichier<br>\n";
   die();
 }
 
