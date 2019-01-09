@@ -1,7 +1,6 @@
 {
   "json-schema":  {
       "$schema": "http://json-schema.org/draft-06/schema#",
-
       "definitions": {
         "person": {
           "type": "object",
@@ -15,9 +14,7 @@
           }
         }
       },
-
       "type": "object",
-
       "properties": {
         "person": { "$ref": "#/definitions/person" }
       }

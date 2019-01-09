@@ -1,0 +1,258 @@
+json-schema:
+  $schema: http://json-schema.org/draft-07/schema#
+  $ref: http://localhost/schema/ex/featureds.schema.yaml
+# Description de ROUTE 500
+data:
+  title: ROUTE 500 2018
+  abstract: |
+    La base de données ROUTE 500® contient l'intégralité du réseau routier classé caractérisé par un certain nombre de propriétés et complété par les éléments du réseau routier secondaire permettant la desserte des chefs-lieux de communes et des principales infrastructures de transport.
+  
+    Affichage complet au zoom 11.
+  
+    **Cartes correspondantes** :
+  
+      - [par défaut](id.php/geodata/route500/map/display)
+      - [au zoom 10 au Sud de Nantes](id.php/geodata/route500/map/display?latlon=47,-1.3&zoom=10)    
+  
+    **URL de test** :
+    
+    - [ogrPath simple: aerodrome](id.php/geodata/route500/aerodrome?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [ogrPath simple: commune](id.php/geodata/route500/commune?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [onZoomGeo: troncon_voie_ferree
+    ](id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [onZoomGeo: noeud_commune](id.php/geodata/route500/noeud_commune?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [badZoom](id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8,49.7&zoom=bad)
+    - [badBbox](id.php/geodata/route500/troncon_voie_ferree?bbox=-2.7,47.2,2.8&zoom=8)
+    - [badSelect](id.php/geodata/route500/badSelect?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [badOnZoomGeo](id.php/geodata/route500/badOnZoomGeo?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [badLayer](id.php/geodata/route500/badLayer?bbox=-2.7,47.2,2.8,49.7&zoom=8)
+    - [select: coastline](id.php/geodata/route500/coastline?bbox=-1.97,46.68,-1.92,46.70&zoom=8)
+    - [troncon_hydrographique
+    ](id.php/geodata/route500/troncon_hydrographique?bbox=-1.97,46.68,-1.92,46.70&zoom=8)
+    - [noeud_commune / nom_comm like 'BEAUN%'
+    ](id.php/geodata/route500/noeud_commune?where=nom_comm%20like%20'BEAUN%')
+  
+  licence:
+    uri: https://www.etalab.gouv.fr/licence-ouverte-open-licence
+    title: licence ouverte Etalab.
+  doc_url: http://professionels.ign.fr/route500
+  metadata: http://professionels.ign.fr/sites/default/files/IGNF_ROUTE500r_2-1.xml
+  yamlClass: FeatureDataset
+  # chemins d'accès principal pour le chargement à partir du répertoire des données
+  dbpath:  route500/ROUTE500_2-1__SHP_LAMB93_FXX_2018-04-09/ROUTE500/1_DONNEES_LIVRAISON_2018-04-00189/R500_2-1_SHP_LAMB93_FXX-ED181
+  # Je considère que la résolution de Route 500 est de 40 m
+  # (360° = 40 000 km => 40 m = 360 / 40 000 000 * 40 = 0,00036 °)
+  # J'arrondis donc au chargement dans MySQL les coordonnées à 4 décimales
+  precision: 4
+  minZoom: 8
+  maxZoom: 18
+
+  layers: 
+    limite_administrative:
+      title: Limite administrative
+      minZoom: 0
+      onZoomGeo:
+        0: /geodata/ne_110m/coastAdminBoundaryLines
+        4: /geodata/ne_10m/coastAdminBoundaryLines
+        7: nature in ('Limite côtière','Frontière internationale','Limite de région')
+        9: nature in ('Limite côtière','Frontière internationale','Limite de région','Limite de département')
+        11: all
+      style: |
+        function(feature) {
+            switch (feature.properties.nature) {
+                case 'Limite côtière': return {color: 'blue', weight: 1};
+                case 'Frontière internationale': return {color: 'chocolate', weight: 2};
+                case 'Limite de région': return {color: 'red', weight: 1};
+                case 'Limite de département': return {color: 'orange', weight: 1};
+                case 'Limite d\'arrondissement':   return {color: 'lightGrey', weight: 1};
+                case 'Limite de commune':   return {color: 'lightGrey', weight: 1};
+            }
+            // /geodata/ne_110m/coastAdminBoundaryLines + /geodata/ne_10m/coastAdminBoundaryLines
+            switch (feature.properties.featurecla) {
+                case 'Coastline': return {color: 'blue', weight: 1};
+                default: return {color: 'chocolate', weight: 2};
+            }
+        }
+      styleMap:
+        nature:
+          'Limite côtière': {color: 'blue', weight: 1}
+          'Frontière internationale': {color: 'chocolate', weight: 2}
+          'Limite de région': {color: 'red', weight: 1}
+          'Limite de département': {color: 'orange', weight: 1}
+          "Limite d'arrondissement": {color: 'lightGrey', weight: 1}
+          'Limite de commune': {color: 'lightGrey', weight: 1}
+        featurecla:
+          Coastline: {color: 'blue', weight: 1}
+        default: {color: 'chocolate', weight: 2}
+      displayedByDefault: true
+      ogrPath: ADMINISTRATIF/LIMITE_ADMINISTRATIVE.shp
+      indexes:
+        id_rte500: true
+    coastline:
+      title: Limite côtière
+      select: limite_administrative / nature='Limite côtière'
+      style: { color: blue, weight: 2, opacity: 0.65 }
+    commune:
+      title: commune
+      style: { color: grey, weight: 1, opacity: 0.65 }
+      ogrPath: ADMINISTRATIF/COMMUNE.shp
+      indexes:
+        id_rte500: true
+    noeud_commune:
+      title: noeud_commune
+      minZoom: 0
+      onZoomGeo:
+        0: /geodata/ne_10m/populated_places_simple
+        4: statut in ('Préfecture de région')
+        7: statut in ('Préfecture de région','Préfecture')
+        9: statut in ('Préfecture de région','Préfecture','Sous-préfecture')
+        10: statut in ('Préfecture de région','Préfecture','Sous-préfecture') or (population >= 10.0)
+        11: population >= 1.0
+        13: all
+      pointToLayer: |
+        function(feature, latlng) {
+          var label = feature.properties.nom_comm;
+          var myIcon = L.icon({
+              iconUrl: '/yamldoc/label.php?color=DarkSlateGray&font=3&label='+label,
+              iconSize: [label.length*7, 13],
+              iconAnchor: [label.length*7/2, 6],
+              popupAnchor: [label.length*7/2, 6]
+          });
+          return L.marker(latlng, {icon: myIcon});
+        }
+      displayedByDefault: true
+      ogrPath: RESEAU_ROUTIER/NOEUD_COMMUNE.shp
+      indexes:
+        id_rte500: true
+        nom_comm: false
+        insee_comm: false
+        statut: false
+    noeud_routier:
+      title: noeud_routier
+      pointToLayer: |
+        function(feature, latlng) {
+          switch(feature.properties.nature) {
+            case 'Carrefour simple': return L.marker(latlng, markerLib.junction);
+            case 'Rond-point': return L.marker(latlng, markerLib.wendepunkt);
+            case 'Echangeur partiel': return L.marker(latlng, markerLib.parclo);
+            case 'Echangeur complet': return L.marker(latlng, markerLib.parclo);
+            case 'Changement d\'attribut': return L.marker(latlng, markerLib.point55);
+            case 'Noeud représentatif d\'une commune': return L.marker(latlng, markerLib.point77);
+            default: return L.marker(latlng, markerLib.warning);
+          }
+        }
+      ogrPath: RESEAU_ROUTIER/NOEUD_ROUTIER.shp
+    troncon_route:
+      title: troncon de route
+      editorialNote: Collection trop voluminseuse pour être affichée pour les zoom < 8
+      minZoom: 4
+      onZoomGeo:
+        4: /geodata/ne_10m/roads
+        8: vocation in ('Type autoroutier')
+        9: vocation in ('Type autoroutier','Liaison principale')
+        10: vocation in ('Type autoroutier','Liaison principale','Liaison régionale')
+        11: all
+      style: |
+        function(feature) {
+            switch (feature.properties.vocation) {
+                case 'Type autoroutier': return { color: 'violet', weight: 2};
+                case 'Liaison principale': return { color: 'red', weight: 1};
+                case 'Liaison régionale': return { color: 'orange', weight: 1};
+                case 'Liaison locale': return { color: 'gold', weight: 1};
+            }
+            switch (feature.properties.scalerank) {
+                case '3': return { color: 'violet', weight: 2, opacity: 0.9 };
+                case '4': return { color: 'violet', weight: 2, opacity: 0.9 };
+                case '5': return { color: 'red', weight: 1, opacity: 0.9};
+                case '6': return { color: 'red', weight: 1, opacity: 0.9};
+                case '7': return { color: 'orange', weight: 1, opacity: 0.9};
+                case '8': return { color: 'orange', weight: 1, opacity: 0.9};
+                case '9': return { color: 'orange', weight: 1, opacity: 0.9};
+                case '10': return { color: 'gold', weight: 1, opacity: 0.9};
+            }
+        }
+      displayedByDefault: true
+      ogrPath: RESEAU_ROUTIER/TRONCON_ROUTE.shp
+    aerodrome:
+      title: aerodrome
+      pointToLayer: function(feature, latlng) { return L.marker(latlng, markerLib.airport); }
+      ogrPath: RESEAU_ROUTIER/AERODROME.shp
+    communication_restreinte:
+      title: Communication restreinte
+      ogrPath: RESEAU_ROUTIER/COMMUNICATION_RESTREINTE.shp
+    noeud_ferre:
+      title: Noeud ferré
+      ogrPath: RESEAU_FERRE/NOEUD_FERRE.shp
+    troncon_voie_ferree:
+      title: Voie ferrée
+      minZoom: 6
+      onZoomGeo:
+        6: nature='LGV'
+        8: nature='LGV' or energie='Electrifiée'
+        10: all
+      style: |
+        function(feature) {
+          if (feature.properties.nature=='LGV')
+            return { color: 'black', weight: 2, opacity: 0.65 };
+          else if (feature.properties.energie=='Electrifiée')
+            return { color: 'black', weight: 1, opacity: 0.65 };
+          else
+            return { color: 'black', weight: 1, 
+            stroke_dasharray:'8,2', 
+            'line-dasharray': [2, 1],
+            'dasharrayx': [2, 5],
+            'dasharray': '4, 5',
+            opacity: 0.65 };
+        }
+      displayedByDefault: true
+      ogrPath: RESEAU_FERRE/TRONCON_VOIE_FERREE.shp
+    cote_frontiere:
+      title: cote_frontiere
+      ogrPath: HABILLAGE/COTE_FRONTIERE.shp
+    troncon_hydrographique:
+      title: Cours d’eau
+      editorialNote: Collection trop voluminseuse pour être affichée pour les zoom < 8
+      minZoom: 0
+      onZoomGeo:
+        0: /geodata/ne_110m/rivers_lake_centerlines
+        4: /geodata/ne_10m/rivers_lake_centerlines_scale_rank
+        8: largeur in ('Plus de 50 mètres')
+        9: largeur in ('Plus de 50 mètres','Entre 15 et 50 mètres')
+        10: largeur in ('Plus de 50 mètres','Entre 15 et 50 mètres','De 0 à 15 mètres')
+        11: all
+      style: { color: MediumBlue, weight: 1, opacity: 0.65 }
+      displayedByDefault: true
+      ogrPath: HABILLAGE/TRONCON_HYDROGRAPHIQUE.shp
+    zone_occupation_sol:
+      title: zone_occupation_sol
+      style: |
+        function(feature) {
+            switch (feature.properties.nature) {
+                case 'Eau': return { color: 'blue', weight: 0};
+                case 'Forêt': return { color: 'lightGreen', weight: 0, opacity: 0.65};
+                case 'Bâti': return { color: 'darkOrange', weight: 0, opacity: 0.65};
+            }
+        }
+      styleMap:
+        nature:
+          Eau: {color: 'blue', weight: 0}
+          Forêt: {color: 'lightGreen', weight: 0}
+          Bâti: {color: 'darkOrange', weight: 0}
+        default:
+          {color: 'chocolate', weight: 2}
+      ogrPath: HABILLAGE/ZONE_OCCUPATION_SOL.shp
+    zone_batie:
+      title: zone_batie
+      select: zone_occupation_sol / nature='Bâti'
+      style: { color: orange, weight: 2, opacity: 0.65 }
+ 
+    badLayer: { title: badLayer }  # couches d'erreur pour vérifier le bon traitement des erreurs
+    badSelect: { title: badSelect,  select: limite administrative / nature='Frontière internationale' }
+    badOnZoomGeo:
+      title: badOnZoomGeo
+      onZoomGeox: [ 0: /geodata/ne_110m/admin_0_boundary_lines_land, 7: nature='Limite côtière', 11: all ]
+
+
+  mysql_database: # Nom de la base MySQL en fonction du serveur MySQL
+    '172.17.0.3': route500 # MySql docker
+    mysql-bdavid.alwaysdata.net: bdavid_route500

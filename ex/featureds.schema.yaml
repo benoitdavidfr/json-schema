@@ -1,0 +1,128 @@
+$schema: http://json-schema.org/draft-07/schema#
+title: Schema des éléments SKOS
+definitions:
+  leafletStyle:
+    description: objet style utilisé par Leaflet
+    type: object
+    properties:
+      color:
+        type: string
+      weight:
+        type: integer
+      opacity:
+        type: number
+    example: { color: blue, weight: 2, opacity: 0.65 }
+description: Table des éléments avec chacun son identifiant officiel comme clé
+type: object
+required: [title, yamlClass, layers]
+properties:
+  title:
+    type: string
+  abstract:
+    type: string
+  licence:
+    description: définition de la licence
+    type: object
+    properties:
+      uri:
+        type: string
+      title:
+        type: string
+  doc_url:
+    type: string
+  metadata:
+    type: string
+  yamlClass:
+    type: string
+    const: FeatureDataset
+  dbpath:
+    type: string
+  precision:
+    type: integer
+  minZoom:
+    type: integer
+  maxZoom:
+    type: integer
+  layers:
+    description: dictionnaire des couches indexé par leur nom
+    type: object
+    patternProperties: # la propriété est le nom de la couche
+      '^[-a-zA-Z0-9_]+$':
+        description: description de chaque couche
+        type: object
+        properties:
+          title:
+            type: string
+          minZoom:
+            type: integer
+          onZoomGeo:
+            description: dictionnaire des filtres en fonction du zoom
+            type: object
+            patternProperties: # la propriété est le numéro du zoom
+              '^[0-9]+$':
+                description: description de chaque couche
+                oneOf:
+                  - description: filtre
+                    type: string
+                  - description: filtre défini par zone
+                    type: object
+          style:
+            description: style des objets de la couche
+            oneOf:
+              - description: style sous la forme d'un code JavaScript définition une fonction retournant un objet style
+                type: string
+              - description: style Leaflet défini comme dictionnaire
+                $ref: '#/definitions/leafletStyle'
+          styleMap:
+            description: dictionnaire des styles par champ de la table et valeur pour ce champ ou style par défaut
+            type: object
+            patternProperties: # la propriété est le nom du champ de la table
+              '^default$':
+                description: style par défaut
+                type: object
+                properties:
+                  color:
+                    type: string
+                  weight:
+                    type: integer
+                  opacity:
+                    type: number
+              '^[a-zA-Z0-9_]+$':
+                description: dictionnaire des styles par valeur pour le champ
+                type: object
+                patternProperties: # la propriété est la valeur prise pour un champ de la table
+                  '^[a-zA-Z0-9_]+$':
+                    description: objet style Leaflet
+                    type: object
+                    properties:
+                      color:
+                        type: string
+                      weight:
+                        type: integer
+                      opacity:
+                        type: number
+          pointToLayer:
+            type: string
+          displayedByDefault:
+            type: boolean
+          ogrPath:
+            type: string
+          typename:
+            type: string
+          select:
+            type: string
+          indexes:
+            description: dictionnaire des index à créer au chargement de la couche dans MySQL en fonction des noms de champ
+            type: object
+            patternProperties: # la propriété est le nom du champ de la table
+              '^[a-zA-Z0-9_]+$':
+                description: true pour index à créer
+                type: boolean
+                const: true
+  mysql_database:
+    description: Nom de la base MySQL en fonction du serveur MySQL
+    type: object
+    patternProperties: # la propriété est le nom du serveur MySQL
+      '^[-a-zA-Z0-9.]+$':
+        description: nom de la base MySQL
+        type: string

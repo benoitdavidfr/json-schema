@@ -41,13 +41,10 @@ json-schema:  {
         "type": "string"
       },
       "geox": {
-        "$ref": "http://localhost/schema/geo.yaml#/json-schema"
+        "$ref": "http://localhost/schema/ex/geo.yaml#/json-schema"
       }
       "geoy": {
-        "$ref": "http://localhost/schema/geo.schema.json"
-      }
-      "geoz": {
-        "$ref": "geo.schema.json"
+        "$ref": "http://localhost/schema/ex/geo.schema.json"
       }
     }
   }

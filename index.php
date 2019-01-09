@@ -65,12 +65,13 @@ if ($_GET['action'] == 'check') {
   if ($key = isset($content['json-schema']) ? 'json-schema' : (isset($content['schema']) ? 'schema' : null)) {
     $schema = new JsonSchema($content[$key]);
     if (isset($content['data'])) {
-      if ($schema->check($content['data'])) {
-        $schema->showWarnings();
+      $status = $schema->check($content['data']);
+      if ($status->ok()) {
+        $status->showWarnings();
         echo "ok instance conforme au schéma<br>\n";
       }
       else
-        $schema->showErrors();
+        $status->showErrors();
     }
     else
       echo "Pas d'instance trouvée dans le fichier<br>\n";
