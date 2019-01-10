@@ -1,0 +1,51 @@
+# Test testref2 pour tester les différents types de reférence à un schéma dans le cas d'un schéma inline
+json-schema:
+  $schema: http://json-schema.org/draft-07/schema#
+  $id: http://localhost/schema/ex/testref2.schema.yaml
+  title: Schema test testref2 - test des différents types de référence à un schéma dans le cas d'un schéma inline
+  definitions:
+    style:
+      description: définition d'un style
+      type: object
+      properties:
+        color:
+          type: string
+        weight:
+          type: integer
+        opacity:
+          type: number
+  description: Table d'objets
+  type: array
+  items:
+    type: object
+    properties:
+      title:
+        type: string
+      styleIntern:
+        description: test d'une référence interne
+        $ref: '#/definitions/style'
+      styleRelFile:
+        description: test d'une référence comme fichier avec un chemin relatif
+        $ref: testref.schema.yaml#/definitions/style
+      styleFile:
+        description: test d'une référence comme fichier avec un chemin absolu
+        $ref: /var/www/html/schema/ex/testref.schema.yaml#/definitions/style
+      styleHttp:
+        description: test d'une référence comme doc Web
+        $ref: http://localhost/schema/ex/testref.schema.yaml#/definitions/style
+      styleError:
+        description: test de la gestion d'erreur d'une référence mal définie
+        $ref: xxx.schema.yaml#/definitions/style
+  
+data:
+  - title: un premier objet
+    styleIntern:
+      color: blue
+    styleRelFile:
+      color: blue
+    styleFile:
+      color: blue
+    styleHttp:
+      color: blue
+    styleError:
+      color: blue

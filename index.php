@@ -4,6 +4,8 @@ name: index.php
 title: index.php - test de la classe JsonSchema
 doc: |
 journal: |
+  9/1/2019
+    ajout vérification de la conformité d'un schéma au méta-schéma
   2/1/2019
     ajout conversion JSON <> Yaml
     ajout navigation dans les répertoires
@@ -19,13 +21,140 @@ require_once __DIR__.'/jsonschema.inc.php';
 $bookmarks = [ 'ex', 'geojson' ];
   
 // si le paramètre file n'est pas défini alors affichage des signets
-if (!isset($_GET['file'])) {
+if (!isset($_GET['file']) && !isset($_GET['action'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema</title></head><body>\n";
   echo "Permet de vérfier la conformité d'une instance à un schéma, de convertir entre JSON et Yaml ",
         "ou de naviguer dans les répertoires pour sélectionner des fichiers Yaml ou JSON<br>\n";
   foreach ($bookmarks as $file)
     echo "<a href='?action=check&amp;file=$file'>check $file</a>",
          " / <a href='?action=convert&amp;file=$file'>convert</a><br>\n";
+  echo "<a href='?action=form'>saisie dans un formulaire de l'instance et du schéma</a><br>\n";
+  echo "<a href='?action=fchoice'>saisie dans un formulaire de l'instance et choix d'un schéma prédéfini</a><br>\n";
+  die();
+}
+
+// fonction générant le formulaire pour l'action form
+function form(string $schema, string $instance, bool $schemaOk, bool $instanceOk) {
+  $schemaStyle = $schemaOk ? " style='color:blue;'" : " style='color:orange;'";
+  $instanceStyle = $instanceOk ? " style='color:blue;'" : " style='color:orange;'";
+  $form = <<<EOT
+<form><table border=1>
+  <tr><td$schemaStyle>
+    Schema:<br>
+    <textarea$schemaStyle name="schema" rows="20" cols="80">$schema</textarea>
+  </td><td$instanceStyle>
+    Instance:<br>
+    <textarea$instanceStyle name="instance" rows="20" cols="80">$instance</textarea>
+  </td></tr>
+<input type='hidden' name='action' value='form'>
+<tr><td colspan=2><center><input type="submit"></center></td></tr>
+</table></form>
+<a href='?'>Retour à l'accueil</a><br>
+EOT;
+  return $form;
+}
+
+if (0) {
+  $txt = file_get_contents(__DIR__.'/json-schema.schema.json');
+  $doc = json_decode($txt, true);
+  var_dump($doc);
+  die("FIN ligne ".__LINE__);
+}
+if (0) {
+  $doc = JsonSchema::jsonfile_get_contents(__DIR__.'/json-schema.schema.json');
+  var_dump($doc);
+  die("FIN ligne ".__LINE__);
+}
+
+// saisie dans un formulaire de l'instance et du schéma
+if (isset($_GET['action']) && ($_GET['action']=='form')) {
+  $schemaParDefaut = <<<'EOT'
+# schéma par défaut
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://georef.eu/schema/none
+
+EOT;
+  $schemaLang = '';
+  $schemaTxt = isset($_GET['schema']) ? $_GET['schema'] : $schemaParDefaut;
+  $instanceTxt = isset($_GET['instance']) ? $_GET['instance'] : "Coller ici l'instance";
+  //echo form($schemaTxt, $instanceTxt, true, true);
+  try {
+    $schema = Yaml::parse($schemaTxt, Yaml::PARSE_DATETIME);
+    $schemaLang = 'Yaml';
+  } catch(Exception $e) {
+    $schema = json_decode($schemaTxt, true);
+    if ($schema === null) {
+      echo form($schemaTxt, $instanceTxt, false, false);
+      echo "Le schéma n'est ni du Yaml (",$e->getMessage(),"), ni du JSON.<br>\n";
+      die();
+    }
+    $schemaLang = 'JSON';
+  }
+  if (is_null($schema)) {
+    echo form($schemaTxt, $instanceTxt, false, false);
+    die("Pas de schéma");
+  }
+  $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json');
+  $statusSchema = $metaschema->check($schema);
+  if (!$statusSchema->ok()) {
+    echo form($schemaTxt, $instanceTxt, false, false);
+    $statusSchema->showErrors();
+    die();
+  }
+  
+  $schema = new JsonSchema($schema);
+  $instanceLang = '';
+  try {
+    $instance = Yaml::parse($instanceTxt, Yaml::PARSE_DATETIME);
+    $instanceLang = 'Yaml';
+  } catch(Exception $e) {
+    $instance = json_decode($instanceTxt, true);
+    if ($instance === null) {
+      echo form($schemaTxt, $instanceTxt, true, false);
+      echo "ok schéma $schemaLang conforme au méta-schéma<br>\n";
+      echo "L'instance n'est ni du Yaml (",$e->getMessage(),"), ni du JSON.<br>\n";
+      die();
+    }
+    $instanceLang = 'JSON';
+  }
+  $status = $schema->check($instance);
+  echo form($schemaTxt, $instanceTxt, true, $status->ok());
+  echo "ok schéma $schemaLang conforme au méta-schéma<br>\n";
+  $statusSchema->showWarnings();
+  if ($status->ok()) {
+    echo "<br>ok instance $instanceLang conforme au schéma<br>\n";
+    $status->showWarnings();
+  }
+  else {
+    echo "<br>KO instance $instanceLang NON conforme au schéma<br>\n";
+    $status->showErrors();
+  }
+  echo "<pre>instance = "; var_dump($instance); echo "</pre>\n";
+  die();
+}
+
+// saisie dans un formulaire de l'instance et choix d'un schéma prédéfini
+if (isset($_GET['action']) && ($_GET['action']=='fchoice')) {
+  $schema_choices = [
+    'json-schema.schema.json'=> "méta schéma JSON",
+  ];
+  $schema = isset($_GET['schema']) ? $_GET['schema'] : '';
+  $instance = isset($_GET['instance']) ? $_GET['instance'] : "Coller ici l'instance";
+  $select = "<select name='schema''>\n";
+  foreach ($schema_choices as $name => $title)
+    $select .= "<option value='$name'>$title</option>\n";
+  $select .= "</select>";
+  echo <<<EOT
+<form>
+Schema: $select
+<br>
+Instance:<br>
+<textarea name="instance" rows="20" cols="100">$instance</textarea><br>
+<input type='hidden' name='action' value='fchoice'>
+<input type="submit">
+</form>
+<a href='?'>Retour à l'accueil</a>
+EOT;
   die();
 }
 
@@ -64,7 +193,9 @@ if ($_GET['action'] == 'check') {
 
   if ($key = isset($content['json-schema']) ? 'json-schema' : (isset($content['schema']) ? 'schema' : null)) {
     $schema = new JsonSchema($content[$key]);
-    if (isset($content['data'])) {
+    if (!isset($content['data']))
+      echo "Pas d'instance trouvée dans le fichier<br>\n";
+    else {
       $status = $schema->check($content['data']);
       if ($status->ok()) {
         $status->showWarnings();
@@ -73,11 +204,17 @@ if ($_GET['action'] == 'check') {
       else
         $status->showErrors();
     }
-    else
-      echo "Pas d'instance trouvée dans le fichier<br>\n";
   }
-  else
-    echo "Pas de schema trouvé dans le fichier<br>\n";
+  else {
+    $schema = new JsonSchema(__DIR__.'/json-schema.schema.json');
+    $status = $schema->check($content);
+    if ($status->ok()) {
+      $status->showWarnings();
+      echo "ok schéma conforme au schéma des schéma<br>\n";
+    }
+    else
+      $status->showErrors();
+  }
   die();
 }
 

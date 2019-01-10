@@ -4,16 +4,19 @@ name: jsonschema.inc.php
 title: jsonschema.inc.php - conformité d'un objet Php à un schéma JSON
 classes:
 doc: |
-  Définit 3 classes dont:
-    - la classe JsonSchema dont la méthode check() vérifie la conformité d'un objet Php au schéma JSON,
-    - la classes JsonSchStatus qui permet de connaitre le statut d'une telle vérification
+  Pour vérifier la conformité d'un objet Php à un schéma, il faut:
+    - créer un objet JsonSchema en fournissant le contenu du schema
+    - appeler sur cet objet la méthode check avec l'objet Php à vérifier
+    - analyser le statut retourné (classe JsonSch Status) par cette vérification
   voir https://json-schema.org/understanding-json-schema/reference/index.html (draft-06)
   La classe est utilisée avec des valeurs Php
   3 types d'erreurs sont gérées:
     - une erreur de contenu de schéma génère une exception
     - une erreur de contenu d'instance produit une erreur et fait échouer la vérification
-    - une alerte produit une alerte et ne fait pas échouer la vérification 
-  il manque:
+    - une alerte produit une alerte et ne fait pas échouer la vérification
+  Normalement, si je vérifie au préalable que le schéma est conforme au méta-schéma alors je ne devrais pas avoir
+  d'exception
+  Il manque:
     - additionalProperties (object)
     - propertyNames (object)
     - minProperties (object)
@@ -31,11 +34,11 @@ doc: |
     - format (string)
     - multiple (number)
 journal: |
+  10/1/2018:
+    Correction du bug du 9/1
   9/1/2018:
-    Réécriture complète en distinguant 3 classes:
-      - schéma JSON
-      - élément d'un schéma
-      - statut de vérification de conformité d'une instance
+    Réécriture complète en 3 classes: schéma JSON, élément d'un schéma et statut d'une vérification
+    BUG dans la vérification d'un schéma par le méta-schéma
   8/1/2018:
     BUG trouvé: lorsqu'un schéma référence un autre schéma dans le même répertoire,
     le répertoire de référence doit être le répertoire courant du schéma
@@ -97,25 +100,26 @@ doc: |
     - {eltPath} est le chemin d'un élément de la forme (/{elt})+ à l'intérieur du fichier
   Le fichier est soit un fichier json dont l'extension doit êytre .json,
   soit un fichier yaml dont l'extension doit être .yaml ou .yml
-  Un JsonSchema peut aussi être défini par un array, dans ce cas le chemin de fichier utilisé dans les références
-  vers un autre schéma doit être défini en absolu
+  Un JsonSchema peut aussi être défini par un array, dans ce cas si le champ $id n'est pas défini alors les chemins
+  de fichier utilisés dans les références vers d'autres schémas ne doivent pas être définis en relatif
 */
 class JsonSchema {
-  const VERBOSE = false;
-  private $filepath=null; // chemin du fichier contenant le schéma
-  //private $eltpath=null; // chemin de l'élément
-  private $def; // définition du contenu du schéma comme array Php
+  private $verbose; // true pour afficher des commentaires
+  private $filepath; // chemin du fichier contenant le schéma
+  private $def; // contenu du schéma comme array Php ou boolean
   private $elt; // objet JsonSchemaElt correspondant au schéma
   private $status; // objet JsonSchStatus définissant le statut issu de la création du schéma
   
   // le premier paramètre est soit le chemin de l'objet JSON dans un fichier, soit son contenu comme array Php
   // le second paramètre contient éventuellement le schema père
-  function __construct($def, ?JsonSchema $parent=null) {
-    if (self::VERBOSE)
+  function __construct($def, ?JsonSchema $parent=null, bool $verbose=false) {
+    $this->verbose = $verbose;
+    if ($verbose)
       echo "JsonSchema::_construct(def=",json_encode($def),", parent",$parent?'<>':'=',"null)<br>\n";
+    $this->status = new JsonSchStatus;
     if (is_string($def)) { // le premier paramètre est le chemin de l'objet JSON dans un fichier
       if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
-        throw new Exception("Chemin $path non compris dans JsonSchema::__construct()");
+        throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
       $filepath = $matches[1];
       $eltpath = isset($matches[4]) ? $matches[4] : '';
       $this->filepath = $filepath;
@@ -135,12 +139,22 @@ class JsonSchema {
       $eltDef = $eltpath ? self::subElement($def, $eltpath) : $def; // la définition de l'élément
     }
     elseif (is_array($def)) { // le premier paramètre est le contenu comme array Php
+      $this->filepath = null;
       $eltDef = $def;
+      if (isset($def['$id']) && preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def['$id'], $matches))
+        $this->filepath = $matches[1];
+      else
+        $this->status->setWarning("Attention le schema ne comporte pas d'identifiant");
+    }
+    elseif (is_bool($def)) {
+      $this->filepath = null;
+      $this->def = $def;
+      $this->elt = null;
+      return;
     }
     else
-      throw new Exception("Erreur paramètre incorrect dans JsonSchema::__construct()");
+      throw new Exception("Erreur paramètre incorrect dans la création d'un schéma");
     $this->def = $def;
-    $this->status = new JsonSchStatus;
     
     if (!isset($def['$schema']) || ($def['$schema']<>'http://json-schema.org/draft-07/schema#'))
       $this->status->setWarning("Attention le schema ne comporte pas l'identifiant draft-07");
@@ -151,8 +165,8 @@ class JsonSchema {
     $this->elt = new JsonSchemaElt($eltDef, $this);
   }
   
-  // définition du contenu du schéma sous la forme d'un array Php
-  function def(): array { return $this->def; }
+  // définition du contenu du schéma sous la forme d'un array Php ou un boolean
+  function def() { return $this->def; }
   
   // sélection d'un élément de l'array $content défini par le path $path
   static function subElement(array $content, string $path) {
@@ -179,12 +193,21 @@ class JsonSchema {
   // récupère le contenu d'un fichier JSON ou Yaml, renvoie une exception en cas d'erreur
   static function jsonfile_get_contents(string $path): array {
     //echo "jsonfile_get_contents(path=$path)<br>\n";
-    if (($doc = @file_get_contents($path)) === false)
+    if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
-    if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml'))
-      return Yaml::parse($doc, Yaml::PARSE_DATETIME);
-    elseif (substr($path, -5)=='.json')
-      return json_decode($doc, true);
+    if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
+      try {
+        return Yaml::parse($txt, Yaml::PARSE_DATETIME);
+      }
+      catch (Exception $e) {
+        throw new Exception("Décodage Yaml du fichier $path incorrect: ".$e->getMessage());
+      }
+    }
+    elseif (substr($path, -5)=='.json') {
+      if (($doc = json_decode($txt, true)) === null)
+        throw new Exception("Décodage JSON du fichier $path incorrect: ".json_last_error_msg());
+      return $doc;
+    }
     else
       throw new Exception("Extension du fichier $path incorrecte");
   }
@@ -219,6 +242,13 @@ class JsonSchema {
     // au check initial, je clone le statut initial du schéma car je ne veux pas partager le statut entre check
     if (!$status)
       $status = clone $this->status;
+    // cas particuliers des schémas booléens
+    if (is_bool($this->def)) {
+      if ($this->def)
+        return $status;
+      else
+        return $status->setError("Schema faux n'acceptant aucune instance");
+    }
     return $this->elt->check($instance, $id, $status);
   }
 };
@@ -229,7 +259,7 @@ title: class JsonSchStatus - définit un statut de vérification de conformité 
 doc: |
   La classe JsonSchStatus définit le statut d'une vérification de conformité d'une instance
   Un objet de cette classe est retourné par une vérification.
-  On peut tester si l'instance est ou non conforme et obtenir les erreurs et les alertes
+  La conformité de l'instance au schéma peut être testée et les erreurs et alertes peuvent être fournies
 */
 class JsonSchStatus {
   private $warnings=[]; // liste des warnings
@@ -253,6 +283,9 @@ class JsonSchStatus {
   // ajoute un warning
   function setWarning(string $message): void { $this->warnings[] = $message; }
   
+  // retourne les alertes
+  function warnings(): array { return $this->warnings; }
+  
   // afffiche les warnings
   function showWarnings(): void {
     if ($this->warnings)
@@ -272,11 +305,13 @@ name: JsonSchemaElt
 title: class JsonSchemaElt - définit un élémént d'un schema JSON
 */
 class JsonSchemaElt {
-  const VERBOSE = false;
-  private $def; // définition sous la forme d'un array Php de l'élément de schema courant
-  private $schema; // l'objet schema contenant l'élément
+  private $verbose;
+  private $def; // définition sous la forme d'un array Php de l'élément courant du schema
+  private $schema; // l'objet schema contenant l'élément, indispensable pour retrouver ses définitions
+  // et pour connaitre son répertoire courant en cas de référence relative
   
-  function __construct(array $def, JsonSchema $schema) {
+  function __construct(array $def, JsonSchema $schema, bool $verbose=false) {
+    $this->verbose = $verbose;
     $this->def = $def;
     $this->schema = $schema;
   }
@@ -301,7 +336,7 @@ class JsonSchemaElt {
   // vérification que l'instance correspond à l'élément de schema
   // $id est utilisé pour afficher les erreurs, $status est le statut en entrée, le retour est le statut modifié
   function check($instance, string $id, JsonSchStatus $status): JsonSchStatus {
-    if (self::VERBOSE)
+    if ($this->verbose)
       echo "check(instance=",json_encode($instance),", id=$id)@def=",json_encode($this->def),"<br><br>\n";
     if (!is_array($this->def))
       throw new Exception("schema non défini pour $id comme array, def=".json_encode($this->def));
@@ -310,7 +345,8 @@ class JsonSchemaElt {
     elseif (isset($this->def['anyOf']) || isset($this->def['oneOf']))
       return $this->checkAnyOf($id, $instance, $status);
     elseif (!isset($this->def['type']))
-      throw new Exception("schema[type] non défini pour $id, schema=".json_encode($this->schema));
+      //throw new Exception("schema[type] non défini pour $id, schema=".json_encode($this->schema));
+      return $status; // je considère qu'il s'agit d'un schéma vide et le test est alors validé
     elseif (!is_string($this->def['type'])) {
       if (!is_array($this->def['type']))
         throw new Exception("def[type]=".json_encode($this->def['type'])." ni string ni list pour $id");
@@ -318,7 +354,10 @@ class JsonSchemaElt {
       foreach ($this->def['type'] as $type) {
         if (!is_string($type))
           throw new Exception("type ".json_encode($type)." not a string");
-        $anyOf[] = ['type'=> $type];
+        $elt = ['type'=> $type];
+        if (($type == 'object') && (isset($this->def['properties'])))
+          $elt['properties'] = $this->def['properties'];
+        $anyOf[] = $elt;
       }
       $elt = new self(['anyOf'=> $anyOf], $this->schema);
       return $elt->checkAnyOf($id, $instance, $status);
@@ -341,7 +380,7 @@ class JsonSchemaElt {
   
   // traitement du cas où le schema est défini par un $ref
   private function checkRef(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
-    if (self::VERBOSE)
+    if ($this->verbose)
       echo "checkRef(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     $path = $this->def['$ref'];
     if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $path, $matches))
@@ -366,7 +405,7 @@ class JsonSchemaElt {
   
   // traitement du cas où le schema est défini par un anyOf ou un oneOf
   private function checkAnyOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
-    if (self::VERBOSE)
+    if ($this->verbose)
       echo "checkAnyOf(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     $anyOf = isset($this->def['oneOf']) ? $this->def['oneOf'] : $this->def['anyOf'];
     foreach ($anyOf as $schemaDef) {
@@ -381,7 +420,7 @@ class JsonSchemaElt {
   
   // traitement du cas où le type indique que l'instance est un object
   private function checkObject(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
-    if (!is_array($instance) || !is_assoc_array($instance))
+    if (!is_array($instance) || ($instance && !is_assoc_array($instance))) // Attention, la liste vide est un objet
       return $status->setError("$id !object");
     
     // vérification que les propriétés obligatoires sont définies
@@ -408,7 +447,7 @@ class JsonSchemaElt {
   
   // traitement du cas où le type indique que la valeur est un object
   private function checkArray(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
-    if (self::VERBOSE)
+    if ($this->verbose)
       echo "checkArray(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     
     if (!is_array($instance) || is_assoc_array($instance))
