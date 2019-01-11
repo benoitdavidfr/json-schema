@@ -1,0 +1,221 @@
+title: liste de tests utilisant les exemples donnés dans la doc
+source: https://json-schema.org/understanding-json-schema/reference/index.html
+schemas:
+  - title: type keyword 
+    schema: {type: number}
+    tests:
+    - instance: 42
+      result: true
+    - instance: 42.3
+      result: true
+    - instance: '42.3'
+      result: false
+  - title: type list
+    schema: { type: [number, string] }
+    tests:
+    - instance: 42
+      result: true
+    - instance: "Life, the universe, and everything"
+      result: true
+    - instance: ["Life", "the universe", "and everything"]
+      result: false
+  - title: type string
+    schema: { type: string }
+    tests:
+    - instance: "This is a string"
+      result: true
+    - instance: "Déjà vu"
+      result: true
+    - instance: '42'
+      result: true
+    - instance: 42
+      result: false
+  - title: type integer
+    schema: { type: integer }
+    tests:
+    - instance: 42
+      result: true
+    - instance: -1
+      result: true
+    - instance: 3.1415926
+      result: false
+    - instance: '42'
+      result: false
+  - title: type number
+    schema: { type: number, minimum: 0, exclusiveMaximum: 100 }
+    tests:
+    - instance: -1
+      result: false
+    - instance: 0
+      result: true
+    - instance: 10
+      result: true
+    - instance: 99
+      result: true
+    - instance: 100
+      result: false
+    - instance: 101
+      result: false
+  - title: type object
+    schema: { type: object }
+    tests:
+    - instance:
+        key: value
+        another_key: another_value
+      result: true
+    - instance: "Not an object"
+      result: false
+    - instance: ["An", "array", "not", "an", "object"]
+      result: false
+  - title: Properties 
+    schema:
+      type: object
+      properties:
+          number: {type: number}
+          street_name: {type: string}
+          street_type: { type: string, enum: [Street, Avenue, Boulevard] }
+    tests:
+      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+        result: true
+      - instance: { "number": "1600", "street_name": "Pennsylvania", "street_type": "Avenue" }
+        result: false
+      - instance: { "number": 1600, "street_name": "Pennsylvania" }
+        result: true
+      - instance: { }
+        result: true
+      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
+        result: true
+      - instance: { }
+        result: true
+  - title: additional Properties 
+    schema:
+      type: object
+      properties:
+          number: {type: number}
+          street_name: {type: string}
+          street_type: { type: string, enum: [Street, Avenue, Boulevard] }
+      additionalProperties: false
+    tests:
+      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+        result: true
+      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
+        result: false
+        comment: additionalProperties not implemented
+      - instance: { }
+        result: true
+  - title: Required Properties 
+    schema:
+      type: object
+      properties:
+          name: {type: string}
+          email: {type: string}
+          address: {type: string}
+          telephone: {type: string}
+      required: [name, email]
+    tests:
+      - instance: { "name": "William Shakespeare", "email": "bill@stratford-upon-avon.co.uk" }
+        result: true
+      - instance:
+          name: 'William Shakespeare'
+          email: bill@stratford-upon-avon.co.uk
+          address: 'Henley Street, Stratford-upon-Avon, Warwickshire, England'
+          authorship: 'in question'
+        result: true
+      - instance: { "name": "William Shakespeare", "address": "Henley Street, Stratford-upon-Avon, England" }
+        result: false
+  - title: Property names
+  - title: Size
+  - title: Dependencies
+  - title: Pattern Properties 
+    schema:
+      type: object
+      patternProperties:
+          ^S_:
+              type: string
+          ^I_:
+              type: integer
+      additionalProperties: false
+    tests:
+      - instance: { "S_25": "This is a string" }
+        result: true
+      - instance: { "I_0": 42 }
+        result: true
+      - instance: { "S_0": 42 }
+        result: false
+      - instance: { "I_42": "This is a string" }
+        result: false
+      - instance: { "keyword": "value" }
+        result: false
+        comment: additionalProperties not implemented
+  - title: Pattern Properties + additional Properties
+  - title: array 
+    schema: { type: array }
+    tests:
+      - instance: [1, 2, 3, 4, 5]
+        result: true
+      - instance: [3, "different", { "types" : "of values" }]
+        result: true
+      - instance: {"Not": "an array"}
+        result: false
+  - title: Items 
+    schema:
+      type: array
+      items:
+          type: number
+    tests:
+      - instance: [1, 2, 3, 4, 5]
+        result: true
+      - instance: [1, 2, "3", 4, 5]
+        result: false
+      - instance: []
+        result: true
+  - title: Tuple validation (non implémenté)
+    schema:
+      type: array
+      items:
+          - type: number
+          - type: string
+          - type: string
+            enum: [ Street, Avenue, Boulevard ]
+          - type: string
+            enum: [ NW, NE, SW, SE ]
+    schemaErrorComment: cas non implémenté
+    tests:
+      - instance: [1600, "Pennsylvania", "Avenue", "NW"]
+        result: true
+      - instance: [24, "Sussex", "Drive"]
+        result: false
+      - instance: ["Palais de l'Élysée"]
+        result: false
+      - instance: [10, "Downing", "Street"]
+        result: true
+      - instance: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
+        result: true
+  - title: Tuple validation + additionalItems
+  - title: Length
+  - title: Uniqueness
+  - title: boolean type
+    schema: { type: boolean }
+    tests:
+      - instance: true
+        result: true
+      - instance: false
+        result: true
+      - instance: 'true'
+        result: false
+      - instance: 0
+        result: false
+  - title: null type
+    schema: { type: 'null' }
+    tests:
+      - instance: null
+        result: true
+      - instance: false
+        result: false
+      - instance: 0
+        result: false
+      - instance: ''
+        result: false
+  - title: Generic keywords
+
+

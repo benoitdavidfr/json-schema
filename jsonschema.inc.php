@@ -14,7 +14,7 @@ doc: |
     - une erreur de contenu de schéma génère une exception
     - une erreur de contenu d'instance produit une erreur et fait échouer la vérification
     - une alerte produit une alerte et ne fait pas échouer la vérification
-  Normalement, si je vérifie au préalable que le schéma est conforme au méta-schéma alors je ne devrais pas avoir
+  Normalement, en vérifiant au préalable que le schéma est conforme au méta-schéma, il ne devrait jamais y avoir 
   d'exception
   Il manque:
     - additionalProperties (object)
@@ -34,9 +34,11 @@ doc: |
     - format (string)
     - multiple (number)
 journal: |
+  11/1/2018:
+    Correction d'un bug
   10/1/2018:
     Correction du bug du 9/1
-  9/1/2018:
+   9/1/2018:
     Réécriture complète en 3 classes: schéma JSON, élément d'un schéma et statut d'une vérification
     BUG dans la vérification d'un schéma par le méta-schéma
   8/1/2018:
@@ -454,6 +456,10 @@ class JsonSchemaElt {
       return $status->setError("$id !array");
     if (!isset($this->def['items']))
       return $status;
+    if (is_bool($this->def['items']) && $this->def['items'])
+      return $status;
+    if (!is_array($this->def['items']) || !is_assoc_array($this->def['items']))
+      throw new Exception("items devrait être un objet ou un booléen");
     $schOfItem = new self($this->def['items'], $this->schema);
     foreach ($instance as $i => $elt) {
       $status = $schOfItem->check($elt, "$id.$i", $status);

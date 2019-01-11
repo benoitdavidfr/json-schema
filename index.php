@@ -5,6 +5,8 @@ title: index.php - test de la classe JsonSchema
 doc: |
 journal: |
   9/1/2019
+    ajout conversion interactive JSON <-> Yaml
+  9/1/2019
     ajout vérification de la conformité d'un schéma au méta-schéma
   2/1/2019
     ajout conversion JSON <> Yaml
@@ -30,6 +32,7 @@ if (!isset($_GET['file']) && !isset($_GET['action'])) {
          " / <a href='?action=convert&amp;file=$file'>convert</a><br>\n";
   echo "<a href='?action=form'>saisie dans un formulaire de l'instance et du schéma</a><br>\n";
   echo "<a href='?action=fchoice'>saisie dans un formulaire de l'instance et choix d'un schéma prédéfini</a><br>\n";
+  echo "<a href='?action=convi'>conversion interactive</a><br>\n";
   die();
 }
 
@@ -140,7 +143,7 @@ if (isset($_GET['action']) && ($_GET['action']=='fchoice')) {
   ];
   $schema = isset($_GET['schema']) ? $_GET['schema'] : '';
   $instance = isset($_GET['instance']) ? $_GET['instance'] : "Coller ici l'instance";
-  $select = "<select name='schema''>\n";
+  $select = "<select name='schema'>\n";
   foreach ($schema_choices as $name => $title)
     $select .= "<option value='$name'>$title</option>\n";
   $select .= "</select>";
@@ -155,6 +158,36 @@ Instance:<br>
 </form>
 <a href='?'>Retour à l'accueil</a>
 EOT;
+  die();
+}
+
+if (isset($_GET['action']) && ($_GET['action']=='convi')) {
+  $text = isset($_GET['txt']) ? $_GET['txt'] : '';
+  echo <<< EOT
+<form><table border=1>
+  <tr><td><textarea name="txt" rows="20" cols="100">$text</textarea></td></tr>
+  <tr><td>lang: 
+    <input type="radio" name='lang' value='yaml' checked>Yaml
+    <input type="radio" name='lang' value='json'> JSON
+  </td></tr>
+<tr><td><center><input type="submit"></center></td></tr>
+<input type='hidden' name='action' value='convi'>
+</table></form>
+<a href='?'>Retour à l'accueil</a><br>
+EOT;
+  try {
+    $doc = Yaml::parse($text, Yaml::PARSE_DATETIME);
+  } catch(Exception $e) {
+    $doc = json_decode($text, true);
+    if ($doc === null) {
+      echo "Le texte n'est ni du Yaml (",$e->getMessage(),"), ni du JSON.<br>\n";
+      die();
+    }
+  }
+  if ($_GET['lang']=='yaml')
+    echo '<pre>',Yaml::dump($doc, 999), "</pre>\n";
+  elseif ($_GET['lang']=='json')
+    echo '<pre>',json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), "</pre>\n";
   die();
 }
 
