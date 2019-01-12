@@ -18,15 +18,8 @@ doc: |
   d'exception
   Il manque:
     - Generic Enumerated misc values
-    - additionalProperties (object)
-    - propertyNames (object)
-    - minProperties (object)
-    - maxProperties (object)
     - dependencies (object)
-    - contains (array)
     - Tuple validation (array)
-    - minItems (array)
-    - maxItems (array)
     - uniqueItems (array)
     - allOf (schema)
     - not (schema)
@@ -35,8 +28,9 @@ doc: |
     - format (string)
     - multiple (number)
 journal: |
-  11/1/2018:
-    Correction d'un bug
+  11-12/1/2018:
+    Renforcement des tests et correction de bugs
+    ajout additionalProperties, propertyNames, minProperties, maxProperties, minItems, maxItems, contains
   10/1/2018:
     Correction du bug du 9/1
    9/1/2018:
@@ -325,20 +319,21 @@ class JsonSchemaElt {
   
   function def(): array { return $this->def; }
       
-  // le schema d'une des propriétés de l'object ou null
+  // le schema d'une des propriétés de l'object ou null si elle n'est pas définie
   private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchemaElt {
     if ($this->verbose)
       echo "schemaOfProperty(id=$id, propname=$propname)@def=",json_encode($this->def),"<br><br>\n";
     if (isset($this->def['properties'][$propname]) && $this->def['properties'][$propname])
       return new self($this->def['properties'][$propname], $this->schema, $this->verbose);
-    elseif (isset($this->def['patternProperties'])) {
-      foreach ($this->def['patternProperties'] as $pattern => $property) {
-        if (preg_match("!$pattern!", $propname)) {
+    if (isset($this->def['patternProperties'])) {
+      foreach ($this->def['patternProperties'] as $pattern => $property)
+        if (preg_match("!$pattern!", $propname))
           return new self($property, $this->schema, $this->verbose);
-        }
-      }
-      $status->setWarning("Attention: la propriété '$id.$propname' ne correspond à aucun motif");
     }
+    if (isset($this->def['additionalProperties'])) {
+      return new self($this->def['additionalProperties'], $this->schema, $this->verbose);
+    }
+    $status->setWarning("Attention: la propriété '$id.$propname' ne correspond à aucun motif");
     return null;
   }
   
@@ -356,8 +351,9 @@ class JsonSchemaElt {
     elseif (isset($this->def['anyOf']) || isset($this->def['oneOf']))
       return $this->checkAnyOf($id, $instance, $status);
     elseif (!isset($this->def['type']))
-      //throw new Exception("schema[type] non défini pour $id, schema=".json_encode($this->schema));
       return $status; // je considère qu'il s'agit d'un schéma vide et le test est alors validé
+    elseif (is_bool($this->def['type']))
+      return $this->def['type'] ? $status : $status->setError("Schema faux n'acceptant aucune instance pour $id");
     elseif (!is_string($this->def['type'])) {
       if (!is_array($this->def['type']))
         throw new Exception("def[type]=".json_encode($this->def['type'])." ni string ni list pour $id");
@@ -441,12 +437,34 @@ class JsonSchemaElt {
           $status->setError("propriété $id.$prop absente");
       }
     }
-    // si patternProperties non défini alors vérification que les propriétés de l'objet sont définies dans le schéma
-    if (!isset($this->def['patternProperties'])) {
+    // Si propertyNames est défini alors vérif que chaque propriété respecte le pattern
+    if (isset($this->def['propertyNames'])) {
+      $propertyNames = $this->def['propertyNames'];
+      if (!isset($propertyNames['pattern']))
+        throw new Exception("No pattern pour propertyNames sur $id");
+      foreach (array_keys($instance) as $propname) {
+        if (!preg_match("!$propertyNames[pattern]!", $propname))
+          $status->setError("propriété $id.$propname ne respecte pas le motif défini par propertyNames");
+      }
+    }
+    // SinonSi ni patternProp ni additionalProp défini alors vérif que les prop de l'objet sont définies dans le schéma
+    elseif (!isset($this->def['patternProperties']) && !isset($this->def['additionalProperties'])) {
       $properties = isset($this->def['properties']) ? array_keys($this->def['properties']) : [];
       if ($undef = array_diff(array_keys($instance), $properties))
         $status->setWarning("Attention: propriétés ".implode(', ',$undef)." de $id non définie(s) par le schéma");
     }
+    // minProperties
+    if (isset($this->def['minProperties']) && (count(array_keys($instance)) < $this->def['minProperties'])) {
+      $nbProp = count(array_keys($instance));
+      $minProperties = $this->def['minProperties'];
+      $status->setError("objet $id a $nbProp propriétés < minProperties = $minProperties");
+    }
+    if (isset($this->def['maxProperties']) && (count(array_keys($instance)) > $this->def['maxProperties'])) {
+      $nbProp = count(array_keys($instance));
+      $maxProperties = $this->def['maxProperties'];
+      $status->setError("objet $id a $nbProp propriétés > maxProperties = $maxProperties");
+    }
+    
     // vérification des caractéristiques de chaque propriété
     foreach ($instance as $prop => $pvalue) {
       if ($schProp = $this->schemaOfProperty($id, $prop, $status)) {
@@ -463,12 +481,34 @@ class JsonSchemaElt {
     
     if (!is_array($instance) || is_assoc_array($instance))
       return $status->setError("$id !array");
+    if (isset($this->def['minItems']) && (count($instance) < $this->def['minItems'])) {
+      $nbre = count($instance);
+      $minItems = $this->def['minItems'];
+      $status = $status->setError("array $id contient $nbre items < minItems = $minItems");
+    }
+    if (isset($this->def['maxItems']) && (count($instance) > $this->def['maxItems'])) {
+      $nbre = count($instance);
+      $maxItems = $this->def['maxItems'];
+      $status = $status->setError("array $id contient $nbre items > maxItems = $maxItems");
+    }
+    if (isset($this->def['contains'])) {
+      if (!is_array($this->def['contains']))
+        throw new Exception("contains devrait être un objet pour $id");
+      $schOfElt = new self($this->def['contains'], $this->schema, $this->verbose);
+      foreach ($instance as $i => $elt) {
+        $status2 = new JsonSchStatus;
+        $status2 = $schOfElt->check($elt, "$id.$i", $status2);
+        if ($status2->ok())
+          return $status->append($status2);
+      }
+      return $status->setError("aucun élément de $id ne vérifie contains");
+    }
     if (!isset($this->def['items']))
       return $status;
     if (is_bool($this->def['items']) && $this->def['items'])
       return $status;
     if (!is_array($this->def['items']) || !is_assoc_array($this->def['items']))
-      throw new Exception("items devrait être un objet ou un booléen");
+      throw new Exception("items devrait être un objet ou un booléen pour $id");
     $schOfItem = new self($this->def['items'], $this->schema, $this->verbose);
     foreach ($instance as $i => $elt) {
       $status = $schOfItem->check($elt, "$id.$i", $status);

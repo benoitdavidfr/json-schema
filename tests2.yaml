@@ -18,3 +18,15 @@ schemas:
     tests:
     - data: { $ref: /var/www/html/schema/ex/route500.yaml }
       result: true
+  - title: schéma toujours vrai
+    schema:
+      type: true
+    tests:
+    - data: { xx: une chaine }
+      result: true
+  - title: schéma toujours faux
+    schema:
+      type: false
+    tests:
+    - data: { xx: une chaine }
+      result: false

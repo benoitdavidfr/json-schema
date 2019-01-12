@@ -69,7 +69,7 @@ if (!isset($_GET['no'])) {
         }
       }
       catch (Exception $e) {
-        echo "<tr><td><a href='?no=$nosch'>$sch[title]</a></td>";
+        echo "<tr><td><a href='?file=$file&amp;no=$nosch'>$sch[title]</a></td>";
         if (isset($sch['schemaErrorComment']))
           echo "<td colspan=2>exception $sch[schemaErrorComment] ok</td></tr>\n";
         else
@@ -81,28 +81,53 @@ if (!isset($_GET['no'])) {
   die();
 }
 
+// réalise un test et affiche le résultat
+function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool $result, string $comment) {
+  if (isset($data['$ref'])) {
+    echo "lecture du fichier ",$data['$ref'],"<br>";
+    $data = JsonSchema::jsonfile_get_contents($data['$ref']);
+    var_dump($data);
+  }
+  $status = $schema->check($data);
+  echo "<h3>$title</h3>\n";
+  echo '<pre>',Yaml::dump($def, 999),"</pre>\n";
+  echo '<pre>',Yaml::dump($data, 999),"</pre>\n";
+
+  if ($status->ok() == $result)
+    echo "ok: status=",$status->ok()?'ok':'KO',", result=",$result?'ok':'KO',"<br>\n";
+  elseif (!$status->ok())
+    echo "<td><pre>",json_encode($status->errors()),"</pre></td></tr>\n";
+  else
+    echo "<td><b>Erreur non détectée $comment</b></td></tr>\n";
+}
+
 // exécution d'un test particulier
 $txt = file_get_contents(__DIR__."/$_GET[file].yaml");
 $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);
-list($nosch, $notest) = explode('.', $_GET['no']);
-$test = $tests['schemas'][$nosch]['tests'][$notest];
-$schema = new JsonSchema($tests['schemas'][$nosch]['schema']);
-if (isset($test['data']['$ref'])) {
-  echo "lecture du fichier ",$test['data']['$ref'],"<br>";
-  $data = JsonSchema::jsonfile_get_contents($test['data']['$ref']);
-  var_dump($data);
+if (strpos($_GET['no'], '.') === false) {
+  $nosch = $_GET['no'];
+  $schema = new JsonSchema($tests['schemas'][$nosch]['schema'], true);
+  
+  foreach ($tests['schemas'][$nosch]['tests'] as $test)
+    testAndShowResult(
+      $tests['schemas'][$nosch]['title'],
+      $tests['schemas'][$nosch]['schema'],
+      $schema,
+      $test['data'],
+      $test['result'],
+      isset($test['comment']) ? $test['comment'] : ''
+    );
 }
-else
-  $data = $test['data'];
-$status = $schema->check($data);
-echo "<h3>",$tests['schemas'][$nosch]['title'],"</h3>\n";
-echo '<pre>',Yaml::dump($tests['schemas'][$nosch]['schema'], 999),"</pre>\n";
-echo '<pre>',Yaml::dump($data, 999),"</pre>\n";
-
-if ($status->ok() == $test['result'])
-  echo "ok: status=",$status->ok()?'ok':'KO',", result=",$test['result']?'ok':'KO',"<br>\n";
-elseif (!$status->ok())
-  echo "<td><pre>",json_encode($status->errors()),"</pre></td></tr>\n";
-else
-  echo "<td><b>Erreur non détectée",isset($test['comment']) ? ", $test[comment]": '',"</b></td></tr>\n";
-
+else {
+  list($nosch, $notest) = explode('.', $_GET['no']);
+  $schema = new JsonSchema($tests['schemas'][$nosch]['schema'], true);
+  $test = $tests['schemas'][$nosch]['tests'][$notest];
+  testAndShowResult(
+    $tests['schemas'][$nosch]['title'],
+    $tests['schemas'][$nosch]['schema'],
+    $schema,
+    $test['data'],
+    $test['result'],
+    isset($test['comment']) ? $test['comment'] : ''
+  );
+}

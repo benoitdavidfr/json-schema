@@ -113,7 +113,6 @@ schemas:
         result: true
       - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
         result: false
-        comment: additionalProperties not implemented
       - data: { }
         result: true
   - title: Required Properties 
@@ -137,7 +136,31 @@ schemas:
       - data: { "name": "William Shakespeare", "address": "Henley Street, Stratford-upon-Avon, England" }
         result: false
   - title: Property names
-  - title: Size
+    schema:
+      type: object
+      propertyNames:
+          pattern: '^[A-Za-z_][A-Za-z0-9_]*$'
+    tests:
+      - data: { "_a_proper_token_001": "value" }
+        result: true
+      - data: { "001 invalid": "value" }
+        result: false
+  - title: minProperties + maxProperties
+    schema:
+      type: object
+      minProperties: 2
+      maxProperties: 3
+    tests:
+      - data: {}
+        result: false
+      - data: { "a": 0 }
+        result: false
+      - data: { "a": 0, "b": 1 }
+        result: true
+      - data: { "a": 0, "b": 1, "c": 2 }
+        result: true
+      - data: { "a": 0, "b": 1, "c": 2, "d": 3 }
+        result: false
   - title: Dependencies
   - title: Pattern Properties 
     schema:
@@ -161,6 +184,23 @@ schemas:
         result: false
         comment: additionalProperties not implemented
   - title: Pattern Properties + additional Properties
+    schema:
+      type: object
+      patternProperties:
+          ^S_: {type: string}
+          ^I_: {type: integer}
+      additionalProperties: false
+    tests:
+      - data: { "S_25": "This is a string" }
+        result: true
+      - data: { "I_0": 42 }
+        result: true
+      - data: { "S_0": 42 }
+        result: false
+      - data: { "I_42": "This is a string" }
+        result: false
+      - data: { "keyword": "value" }
+        result: false
   - title: array 
     schema: { type: array }
     tests:
@@ -181,6 +221,18 @@ schemas:
       - data: [1, 2, "3", 4, 5]
         result: false
       - data: []
+        result: true
+  - title: List validation avec contains
+    schema:
+      type: array
+      contains:
+          type: number
+    tests:
+      - data: ["life", "universe", "everything", 42]
+        result: true
+      - data: ["life", "universe", "everything", "forty-two"]
+        result: false
+      - data: [1, 2, 3, 4, 5]
         result: true
   - title: Tuple validation (non implémenté)
     schema:
@@ -205,7 +257,22 @@ schemas:
       - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
         result: true
   - title: Tuple validation + additionalItems
-  - title: Length
+  - title: minItems + maxItems
+    schema:
+      type: array
+      minItems: 2
+      maxItems: 3
+    tests:
+      - data: []
+        result: false
+      - data: [1]
+        result: false
+      - data: [1, 2]
+        result: true
+      - data: [1, 2, 3]
+        result: true
+      - data: [1, 2, 3, 4]
+        result: false
   - title: Uniqueness
   - title: boolean type
     schema: { type: boolean }
