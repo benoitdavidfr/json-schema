@@ -1,5 +1,5 @@
 {
-  "json-schema":  {
+  "jSchema":  {
       "$schema": "http://json-schema.org/draft-06/schema#",
       "definitions": {
         "person": {
@@ -19,26 +19,24 @@
         "person": { "$ref": "#/definitions/person" }
       }
   },
-  "data": {
-    "person": {
-      "name": "Elizabeth",
-      "children": [
-        {
-          "name": "Charles",
-          "children": [
-            {
-              "name": "William",
-              "children": [
-                { "name": "George" },
-                { "name": "Charlotte" }
-              ]
-            },
-            {
-              "name": "Harry"
-            }
-          ]
-        }
-      ]
-    }
+  "person": {
+    "name": "Elizabeth",
+    "children": [
+      {
+        "name": "Charles",
+        "children": [
+          {
+            "name": "William",
+            "children": [
+              { "name": "George" },
+              { "name": "Charlotte" }
+            ]
+          },
+          {
+            "name": "Harry"
+          }
+        ]
+      }
+    ]
   }
 }

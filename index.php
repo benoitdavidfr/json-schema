@@ -184,7 +184,7 @@ EOT;
       die();
     }
   }
-  if ($_GET['lang']=='yaml')
+  if (!isset($_GET['lang']) || ($_GET['lang']=='yaml'))
     echo '<pre>',Yaml::dump($doc, 999), "</pre>\n";
   elseif ($_GET['lang']=='json')
     echo '<pre>',json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), "</pre>\n";
@@ -211,8 +211,10 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
   die();
 }
 
-// affichage du fichier puis, s'il contient un schema, création du schéma, et, s'il contient des données,
-// vérification de la conformité des données au schéma
+// les fichiers à tester contiennent soit des données spécifiées par un schéma soit un schéma
+// dans le premier cas: vérification de la conformité des données au schéma et du schéma au méta-schéma
+// dans le second uniquement vérification de la conformité au méta-schéma
+// dans un fichier de données, le schéma est défini par le champ jSchema ou json-schema
 if ($_GET['action'] == 'check') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema check</title></head><body>\n";
   if (is_file(__DIR__."/$_GET[file].yaml"))
@@ -224,30 +226,25 @@ if ($_GET['action'] == 'check') {
 
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
-  if ($key = isset($content['json-schema']) ? 'json-schema' : (isset($content['schema']) ? 'schema' : null)) {
+  if ($key = isset($content['jSchema']) ? 'jSchema' : (isset($content['json-schema']) ? 'json-schema' : null)) {
     $schema = new JsonSchema($content[$key]);
-    if (!isset($content['data']))
-      echo "Pas d'instance trouvée dans le fichier<br>\n";
-    else {
-      $status = $schema->check($content['data']);
-      if ($status->ok()) {
-        $status->showWarnings();
-        echo "ok instance conforme au schéma<br>\n";
-      }
-      else
-        $status->showErrors();
-    }
-  }
-  else {
-    $schema = new JsonSchema(__DIR__.'/json-schema.schema.json');
     $status = $schema->check($content);
     if ($status->ok()) {
       $status->showWarnings();
-      echo "ok schéma conforme au schéma des schéma<br>\n";
+      echo "ok instance conforme au schéma<br>\n";
     }
     else
       $status->showErrors();
+    $content = $content[$key];
   }
+  $schema = new JsonSchema(__DIR__.'/json-schema.schema.json');
+  $status = $schema->check($content);
+  if ($status->ok()) {
+    echo "ok schéma conforme au méta-schéma<br>\n";
+  }
+  else
+    $status->showErrors();
+  
   die();
 }
 

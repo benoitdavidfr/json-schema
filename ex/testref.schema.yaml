@@ -11,25 +11,20 @@ definitions:
         type: integer
       opacity:
         type: number
-description: Table d'objets
-type: array
-items:
-  type: object
-  properties:
-    title:
-      type: string
-    styleIntern:
-      description: test d'une référence interne
-      $ref: '#/definitions/style'
-    styleRelFile:
-      description: test d'une référence comme fichier avec un chemin relatif
-      $ref: testref.schema.yaml#/definitions/style
-    styleFile:
-      description: test d'une référence comme fichier avec un chemin absolu
-      $ref: /var/www/html/schema/ex/testref.schema.yaml#/definitions/style
-    styleHttp:
-      description: test d'une référence comme doc Web
-      $ref: http://localhost/schema/ex/testref.schema.yaml#/definitions/style
-    styleError:
-      description: test de la gestion d'erreur d'une référence mal définie
-      $ref: xxx.schema.yaml#/definitions/style
+type: object
+properties:
+  styleIntern:
+    description: test d'une référence interne
+    $ref: '#/definitions/style'
+  styleRelFile:
+    description: test d'une référence comme fichier avec un chemin relatif
+    $ref: testref.schema.yaml#/definitions/style
+  styleFile:
+    description: test d'une référence comme fichier avec un chemin absolu
+    $ref: /var/www/html/schema/ex/testref.schema.yaml#/definitions/style
+  styleHttp:
+    description: test d'une référence comme doc Web
+    $ref: http://localhost/schema/ex/testref.schema.yaml#/definitions/style
+  styleError:
+    description: test de la gestion d'erreur d'une référence mal définie
+    $ref: xxx.schema.yaml#/definitions/style

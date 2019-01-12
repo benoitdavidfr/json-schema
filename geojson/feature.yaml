@@ -1,14 +1,32 @@
-$schema: http://json-schema.org/draft-07/schema#
-$id: http://geojson.org/schema/Feature.json
-title: GeoJSON Feature
-type: object
-required: [ type, properties, geometry ]
-properties:
-  type: { type: string, enum: [ Feature ] }
+title: exemples d'instances de Feature GeoJSON
+jSchema:
+  $schema: http://json-schema.org/draft-07/schema#
+  $id: http://geojson.org/schema/feature.ex.yaml
+  title: tableau d'exemples de Feature GeoJSON
+  type: object
   properties:
-    oneOf:
-      - type: 'null'
-      - type: object
-  geometry:
-    $ref: http://localhost/schema/geojson/geometry.yaml
-  bbox: { type: array, minItems: 4, items: { type: number } }
+    data:
+      type: array
+      items:
+        $ref: http://localhost/schema/geojson/feature2.schema.yaml
+data:
+  - type: Feature
+    properties:
+    geometry:
+      type: Point
+      coordinates: [ 2.24, 48.34 ]
+  - type: Feature
+    properties:
+      aa: aaa
+      bb: bbb
+    geometry:
+      type: Point
+      coordinates: [ 2.24, 48.34 ]
+  - type: Feature
+    properties:
+      aa: aaa
+      bb: bbb
+    geometry:
+      type: Polygon
+      coordinates:
+        - [ [2.24,48.34], [2.26,48.30], [2.26,48.26], [2.24,48.34] ]

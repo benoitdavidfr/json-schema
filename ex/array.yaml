@@ -1,5 +1,5 @@
 title: array
-json-schema:  {
+jSchema:  {
     "$id": "https://example.com/arrays.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "A representation of a person, company, organization, or place",
@@ -33,11 +33,10 @@ json-schema:  {
       }
     }
   }
-data:
-  fruitsx: [ "apple", "orange", "pear" ]
-  fruits: { 1: apple, 3: orange, a: pear}
-  vegetables:
-    - veggieNam: potato
-      veggieLike: true
-    - veggieName: broccoli
-      veggieLik: false
+fruitsx: [ "apple", "orange", "pear" ]
+fruits: { 1: apple, 3: orange, a: pear}
+vegetables:
+  - veggieNam: potato
+    veggieLike: true
+  - veggieName: broccoli
+    veggieLik: false

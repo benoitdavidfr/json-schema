@@ -1,4 +1,4 @@
-json-schema:  {
+jSchema:  {
     "$id": "https://example.com/event.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "A representation of an event",
@@ -41,24 +41,23 @@ json-schema:  {
         "type": "string"
       },
       "geox": {
-        "$ref": "http://localhost/schema/ex/geo.yaml#/json-schema"
+        "$ref": "http://localhost/schema/ex/geo.yaml#/jSchema"
       }
       "geoy": {
         "$ref": "http://localhost/schema/ex/geo.schema.json"
       }
     }
   }
-data:
-  dtstart: 2019-01-01
-  summary: nouvelle année
-  geox:
-    "latitude": 48.858093
-    "longitude": 2.294694
-  geoy:
-    "latitude": 48.858093
-    "longitude": 2.294694
-  geoz:
-    "latitude": 48.858093
-    "longitude": 2.294694
+dtstart: 2019-01-01
+summary: nouvelle année
+geox:
+  "latitude": 48.858093
+  "longitude": 2.294694
+geoy:
+  "latitude": 48.858093
+  "longitude": 2.294694
+geoz:
+  "latitude": 48.858093
+  "longitude": 2.294694
     
   

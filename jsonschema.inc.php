@@ -17,6 +17,7 @@ doc: |
   Normalement, en vérifiant au préalable que le schéma est conforme au méta-schéma, il ne devrait jamais y avoir 
   d'exception
   Il manque:
+    - Generic Enumerated misc values
     - additionalProperties (object)
     - propertyNames (object)
     - minProperties (object)
@@ -114,7 +115,7 @@ class JsonSchema {
   
   // le premier paramètre est soit le chemin de l'objet JSON dans un fichier, soit son contenu comme array Php
   // le second paramètre contient éventuellement le schema père
-  function __construct($def, ?JsonSchema $parent=null, bool $verbose=false) {
+  function __construct($def, bool $verbose=false, ?JsonSchema $parent=null) {
     $this->verbose = $verbose;
     if ($verbose)
       echo "JsonSchema::_construct(def=",json_encode($def),", parent",$parent?'<>':'=',"null)<br>\n";
@@ -164,7 +165,7 @@ class JsonSchema {
       foreach (array_keys($def['definitions']) as $defid)
         self::checkDefinition($defid, $def['definitions']);
     }
-    $this->elt = new JsonSchemaElt($eltDef, $this);
+    $this->elt = new JsonSchemaElt($eltDef, $this, $verbose);
   }
   
   // définition du contenu du schéma sous la forme d'un array Php ou un boolean
@@ -307,12 +308,16 @@ name: JsonSchemaElt
 title: class JsonSchemaElt - définit un élémént d'un schema JSON
 */
 class JsonSchemaElt {
-  private $verbose;
-  private $def; // définition sous la forme d'un array Php de l'élément courant du schema
+  private $verbose; // verbosité boolean
+  private $def; // définition de l'élément courant du schema sous la forme d'un array ou d'un booléen Php
   private $schema; // l'objet schema contenant l'élément, indispensable pour retrouver ses définitions
   // et pour connaitre son répertoire courant en cas de référence relative
   
-  function __construct(array $def, JsonSchema $schema, bool $verbose=false) {
+  function __construct($def, JsonSchema $schema, bool $verbose) {
+    if (!is_array($def) && !is_bool($def)) {
+      echo "JsonSchemaElt::__construct(def=",json_encode($this->def),")<br><br>\n";
+      throw new Exception("TypeError: Argument def passed to JsonSchemaElt::__construct() must be of the type array or boolean");
+    }
     $this->verbose = $verbose;
     $this->def = $def;
     $this->schema = $schema;
@@ -322,12 +327,14 @@ class JsonSchemaElt {
       
   // le schema d'une des propriétés de l'object ou null
   private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchemaElt {
+    if ($this->verbose)
+      echo "schemaOfProperty(id=$id, propname=$propname)@def=",json_encode($this->def),"<br><br>\n";
     if (isset($this->def['properties'][$propname]) && $this->def['properties'][$propname])
-      return new self($this->def['properties'][$propname], $this->schema);
+      return new self($this->def['properties'][$propname], $this->schema, $this->verbose);
     elseif (isset($this->def['patternProperties'])) {
       foreach ($this->def['patternProperties'] as $pattern => $property) {
         if (preg_match("!$pattern!", $propname)) {
-          return new self($property, $this->schema);
+          return new self($property, $this->schema, $this->verbose);
         }
       }
       $status->setWarning("Attention: la propriété '$id.$propname' ne correspond à aucun motif");
@@ -340,6 +347,8 @@ class JsonSchemaElt {
   function check($instance, string $id, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
       echo "check(instance=",json_encode($instance),", id=$id)@def=",json_encode($this->def),"<br><br>\n";
+    if (is_bool($this->def))
+      return $this->def ? $status : $status->setError("Schema faux n'acceptant aucune instance pour $id");
     if (!is_array($this->def))
       throw new Exception("schema non défini pour $id comme array, def=".json_encode($this->def));
     elseif (isset($this->def['$ref']))
@@ -361,7 +370,7 @@ class JsonSchemaElt {
           $elt['properties'] = $this->def['properties'];
         $anyOf[] = $elt;
       }
-      $elt = new self(['anyOf'=> $anyOf], $this->schema);
+      $elt = new self(['anyOf'=> $anyOf], $this->schema, $this->verbose);
       return $elt->checkAnyOf($id, $instance, $status);
     }
     elseif ($this->def['type']=='object')
@@ -392,12 +401,12 @@ class JsonSchemaElt {
     //echo "checkRef: filepath=$filepath, eltpath=$eltpath<br>\n";
     if (!$filepath) { // Si pas de filepath alors même fichier schéma
       $content = JsonSchema::subElement($this->schema->def(), $eltpath);
-      $schemaElt = new JsonSchemaElt($content, $this->schema);
+      $schemaElt = new self($content, $this->schema, $this->verbose);
       return $schemaElt->check($instance, $id, $status);
     }
     else {
       try {
-        $schema = new JsonSchema($path, $this->schema);
+        $schema = new JsonSchema($path, $this->verbose, $this->schema);
         return $schema->check($instance, $id);
       } catch (Exception $e) {
         return $status->setError("Sur $id erreur ".$e->getMessage());
@@ -411,7 +420,7 @@ class JsonSchemaElt {
       echo "checkAnyOf(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     $anyOf = isset($this->def['oneOf']) ? $this->def['oneOf'] : $this->def['anyOf'];
     foreach ($anyOf as $schemaDef) {
-      $schema = new self($schemaDef, $this->schema);
+      $schema = new self($schemaDef, $this->schema, $this->verbose);
       $status2 = new JsonSchStatus;
       $status2 = $schema->check($instance, $id, $status2);
       if ($status2->ok())
@@ -460,7 +469,7 @@ class JsonSchemaElt {
       return $status;
     if (!is_array($this->def['items']) || !is_assoc_array($this->def['items']))
       throw new Exception("items devrait être un objet ou un booléen");
-    $schOfItem = new self($this->def['items'], $this->schema);
+    $schOfItem = new self($this->def['items'], $this->schema, $this->verbose);
     foreach ($instance as $i => $elt) {
       $status = $schOfItem->check($elt, "$id.$i", $status);
     }
@@ -510,6 +519,7 @@ class JsonSchemaElt {
 
 
 if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSchema 
+  
   if (isset($_GET['test']) && ($_GET['test']=='JsonSchema')) {
     echo "Test JsonSchema<br>\n";
     foreach ([['type'=> 'string'], ['type'=> 'number']] as $schemaDef) {

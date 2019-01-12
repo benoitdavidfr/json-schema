@@ -2,15 +2,13 @@
 json-schema:
   $schema: http://json-schema.org/draft-07/schema#
   $ref: http://localhost/schema/ex/testref.schema.yaml
-data:
-  - title: un premier objet
-    styleIntern:
-      color: blue
-    styleRelFile:
-      color: blue
-    styleFile:
-      color: blue
-    styleHttp:
-      color: blue
-    styleError:
-      color: blue
+styleIntern:
+  color: blue
+styleRelFile:
+  color: blue
+styleFile:
+  color: blue
+styleHttp:
+  color: blue
+styleError:
+  color: blue

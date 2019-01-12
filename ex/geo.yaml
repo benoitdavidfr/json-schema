@@ -1,4 +1,4 @@
-json-schema:
+jSchema:
   "$id": "https://example.com/geographical-location.schema.json"
   "$schema": "http://json-schema.org/draft-07/schema#"
   "title": "Longitude and Latitude Values"
@@ -22,11 +22,10 @@ json-schema:
     nullvalue:
       type: 'null'
   "required": [ "latitude", "longitude" ]
-data:
-  "latitude": 48.858093
-  "longitude": 2.294694
-  "longitudes": 2.294694
-  country: France
-  kind: ici
-  nullvalue: null
+latitude: 48.858093
+longitude: 2.294694
+longitudes: 2.294694
+country: France
+kind: ici
+nullvalue: null
 

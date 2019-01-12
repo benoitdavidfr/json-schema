@@ -1,72 +1,85 @@
-title: liste de tests utilisant les exemples donnés dans la doc
+title: tests utilisant les exemples donnés dans la doc json-schema
+jSchema:
+  type: object
+  properties:
+    schemas:
+      type: array
+      items:
+        type: object
+        required: [title]
+        properties:
+          title: { type: string }
+          schema:
+            $ref: http://localhost/schema/json-schema.schema.json
+          tests: { type: array }
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
   - title: type keyword 
     schema: {type: number}
     tests:
-    - instance: 42
-      result: true
-    - instance: 42.3
-      result: true
-    - instance: '42.3'
-      result: false
+      - data: 42
+        result: true
+      - data: 42.3
+        result: true
+      - data: '42.3'
+        result: false
   - title: type list
     schema: { type: [number, string] }
     tests:
-    - instance: 42
-      result: true
-    - instance: "Life, the universe, and everything"
-      result: true
-    - instance: ["Life", "the universe", "and everything"]
-      result: false
+      - data: 42
+        result: true
+      - data: "Life, the universe, and everything"
+        result: true
+      - data: ["Life", "the universe", "and everything"]
+        result: false
   - title: type string
     schema: { type: string }
     tests:
-    - instance: "This is a string"
-      result: true
-    - instance: "Déjà vu"
-      result: true
-    - instance: '42'
-      result: true
-    - instance: 42
-      result: false
+      - data: "This is a string"
+        result: true
+      - data: "Déjà vu"
+        result: true
+      - data: '42'
+        result: true
+      - data: 42
+        result: false
   - title: type integer
     schema: { type: integer }
     tests:
-    - instance: 42
-      result: true
-    - instance: -1
-      result: true
-    - instance: 3.1415926
-      result: false
-    - instance: '42'
-      result: false
+      - data: 42
+        result: true
+      - data: -1
+        result: true
+      - data: 3.1415926
+        result: false
+      - data: '42'
+        result: false
   - title: type number
     schema: { type: number, minimum: 0, exclusiveMaximum: 100 }
     tests:
-    - instance: -1
-      result: false
-    - instance: 0
-      result: true
-    - instance: 10
-      result: true
-    - instance: 99
-      result: true
-    - instance: 100
-      result: false
-    - instance: 101
-      result: false
+      - data: -1
+        result: false
+      - data: 0
+        result: true
+      - data: 10
+        result: true
+      - data: 99
+        result: true
+      - data: 100
+        result: false
+      - data: 101
+        result: false
   - title: type object
     schema: { type: object }
     tests:
-    - instance:
-        key: value
-        another_key: another_value
-      result: true
-    - instance: "Not an object"
-      result: false
-    - instance: ["An", "array", "not", "an", "object"]
-      result: false
+      - data:
+          key: value
+          another_key: another_value
+        result: true
+      - data: "Not an object"
+        result: false
+      - data: ["An", "array", "not", "an", "object"]
+        result: false
   - title: Properties 
     schema:
       type: object
@@ -75,17 +88,17 @@ schemas:
           street_name: {type: string}
           street_type: { type: string, enum: [Street, Avenue, Boulevard] }
     tests:
-      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
         result: true
-      - instance: { "number": "1600", "street_name": "Pennsylvania", "street_type": "Avenue" }
+      - data: { "number": "1600", "street_name": "Pennsylvania", "street_type": "Avenue" }
         result: false
-      - instance: { "number": 1600, "street_name": "Pennsylvania" }
+      - data: { "number": 1600, "street_name": "Pennsylvania" }
         result: true
-      - instance: { }
+      - data: { }
         result: true
-      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
         result: true
-      - instance: { }
+      - data: { }
         result: true
   - title: additional Properties 
     schema:
@@ -96,12 +109,12 @@ schemas:
           street_type: { type: string, enum: [Street, Avenue, Boulevard] }
       additionalProperties: false
     tests:
-      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
         result: true
-      - instance: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
         result: false
         comment: additionalProperties not implemented
-      - instance: { }
+      - data: { }
         result: true
   - title: Required Properties 
     schema:
@@ -113,15 +126,15 @@ schemas:
           telephone: {type: string}
       required: [name, email]
     tests:
-      - instance: { "name": "William Shakespeare", "email": "bill@stratford-upon-avon.co.uk" }
+      - data: { "name": "William Shakespeare", "email": "bill@stratford-upon-avon.co.uk" }
         result: true
-      - instance:
+      - data:
           name: 'William Shakespeare'
           email: bill@stratford-upon-avon.co.uk
           address: 'Henley Street, Stratford-upon-Avon, Warwickshire, England'
           authorship: 'in question'
         result: true
-      - instance: { "name": "William Shakespeare", "address": "Henley Street, Stratford-upon-Avon, England" }
+      - data: { "name": "William Shakespeare", "address": "Henley Street, Stratford-upon-Avon, England" }
         result: false
   - title: Property names
   - title: Size
@@ -136,26 +149,26 @@ schemas:
               type: integer
       additionalProperties: false
     tests:
-      - instance: { "S_25": "This is a string" }
+      - data: { "S_25": "This is a string" }
         result: true
-      - instance: { "I_0": 42 }
+      - data: { "I_0": 42 }
         result: true
-      - instance: { "S_0": 42 }
+      - data: { "S_0": 42 }
         result: false
-      - instance: { "I_42": "This is a string" }
+      - data: { "I_42": "This is a string" }
         result: false
-      - instance: { "keyword": "value" }
+      - data: { "keyword": "value" }
         result: false
         comment: additionalProperties not implemented
   - title: Pattern Properties + additional Properties
   - title: array 
     schema: { type: array }
     tests:
-      - instance: [1, 2, 3, 4, 5]
+      - data: [1, 2, 3, 4, 5]
         result: true
-      - instance: [3, "different", { "types" : "of values" }]
+      - data: [3, "different", { "types" : "of values" }]
         result: true
-      - instance: {"Not": "an array"}
+      - data: {"Not": "an array"}
         result: false
   - title: Items 
     schema:
@@ -163,11 +176,11 @@ schemas:
       items:
           type: number
     tests:
-      - instance: [1, 2, 3, 4, 5]
+      - data: [1, 2, 3, 4, 5]
         result: true
-      - instance: [1, 2, "3", 4, 5]
+      - data: [1, 2, "3", 4, 5]
         result: false
-      - instance: []
+      - data: []
         result: true
   - title: Tuple validation (non implémenté)
     schema:
@@ -181,15 +194,15 @@ schemas:
             enum: [ NW, NE, SW, SE ]
     schemaErrorComment: cas non implémenté
     tests:
-      - instance: [1600, "Pennsylvania", "Avenue", "NW"]
+      - data: [1600, "Pennsylvania", "Avenue", "NW"]
         result: true
-      - instance: [24, "Sussex", "Drive"]
+      - data: [24, "Sussex", "Drive"]
         result: false
-      - instance: ["Palais de l'Élysée"]
+      - data: ["Palais de l'Élysée"]
         result: false
-      - instance: [10, "Downing", "Street"]
+      - data: [10, "Downing", "Street"]
         result: true
-      - instance: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
+      - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
         result: true
   - title: Tuple validation + additionalItems
   - title: Length
@@ -197,25 +210,82 @@ schemas:
   - title: boolean type
     schema: { type: boolean }
     tests:
-      - instance: true
+      - data: true
         result: true
-      - instance: false
+      - data: false
         result: true
-      - instance: 'true'
+      - data: 'true'
         result: false
-      - instance: 0
+      - data: 0
         result: false
   - title: null type
     schema: { type: 'null' }
     tests:
-      - instance: null
+      - data: null
         result: true
-      - instance: false
+      - data: false
         result: false
-      - instance: 0
+      - data: 0
         result: false
-      - instance: ''
+      - data: ''
         result: false
-  - title: Generic keywords
+  - title: Generic keywords - examples
+    schema:
+      title: 'Match anything'
+      description: 'This is a schema that matches anything.'
+      default: 'Default value'
+      examples:
+          - Anything
+          - 4035
+    tests:
+      - data: Anything
+        result: true
+  - title: Generic keywords - Enumerated string values
+    schema:
+      type: string
+      enum: ["red", "amber", "green"]
+    tests:
+      - data: red
+        result: true
+      - data: blue
+        result: false
+  - title: Generic keywords - Enumerated misc values
+    schema:
+      enum: ["red", "amber", "green", null, 42]
+    tests:
+      - data: red
+        result: true
+      - data: null
+        result: true
+      - data: 42
+        result: true
+      - data: blue
+        result: false
+  - title: Generic keywords - Constant values
+    schema:
+      properties:
+          country:
+              const: 'United States of America'
+    tests:
+      - data: United States of America
+        result: true
+      - data: France
+        result: false
+  - title: Combining schemas
+    schema:
+      anyOf:
+          -   type: string
+              maxLength: 5
+          -   type: number
+              minimum: 0
+    tests:
+      - data: short
+        result: true
+      - data: too long
+        result: false
+      - data: 12
+        result: true
+      - data: -5
+        result: false
 
 

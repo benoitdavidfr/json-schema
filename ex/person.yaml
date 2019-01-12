@@ -1,5 +1,5 @@
 title: une personne
-json-schema:
+jSchema:
   $id: https://example.com/person.schema.json
   $schema: http://json-schema.org/draft-07/schema#
   title: Person
@@ -15,8 +15,7 @@ json-schema:
       description: Age in years which must be equal to or greater than zero.
       type: integer
       minimum: 0
-data:
-  firstName: Benoit
-  lastName: David
-  birthDate: 1961-01-31
-  age: 58
+firstName: Benoit
+lastName: David
+birthDate: 1961-01-31
+age: 58

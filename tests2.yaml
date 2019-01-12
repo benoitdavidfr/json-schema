@@ -1,0 +1,20 @@
+title: liste de tests divers
+jSchema:
+  type: object
+  properties:
+    schemas:
+      type: array
+      items:
+        type: object
+        required: [title]
+        properties:
+          title: { type: string }
+          schema:
+            $ref: http://localhost/schema/json-schema.schema.json
+          tests: { type: array }
+schemas:
+  - title: route500 / featureds.schema
+    schema: { $ref: /var/www/html/schema/ex/featureds.schema.yaml }
+    tests:
+    - data: { $ref: /var/www/html/schema/ex/route500.yaml }
+      result: true
