@@ -43,7 +43,34 @@ schemas:
         result: true
       - data: 42
         result: false
-  - title: type integer
+  - title: string length
+    schema:
+      type: string
+      minLength: 2
+      maxLength: 3
+    tests:
+      - data: A
+        result: false
+      - data: AB
+        result: true
+      - data: ABC
+        result: true
+      - data: ABCD
+        result: false
+  - title: string regexp
+    schema:
+      type: string
+      pattern: '^(\([0-9]{3}\))?[0-9]{3}-[0-9]{4}$'
+    tests:
+      - data: "555-1212"
+        result: true
+      - data: "(888)555-1212"
+        result: true
+      - data: "(888)555-1212 ext. 532"
+        result: false
+      - data: "(800)FLOWERS"
+        result: false
+  - title: Numeric types - type integer
     schema: { type: integer }
     tests:
       - data: 42
@@ -54,7 +81,7 @@ schemas:
         result: false
       - data: '42'
         result: false
-  - title: type number
+  - title: Numeric types - type number
     schema: { type: number, minimum: 0, exclusiveMaximum: 100 }
     tests:
       - data: -1
@@ -68,6 +95,32 @@ schemas:
       - data: 100
         result: false
       - data: 101
+        result: false
+  - title: Numeric types - multipleOf 10
+    schema:
+      type: number
+      multipleOf: 10
+    tests:
+      - data: 0
+        result: true
+      - data: 10
+        result: true
+      - data: 20
+        result: true
+      - data: 23
+        result: false
+  - title: Numeric types - multipleOf 1.1
+    schema:
+      type: number
+      multipleOf: 1.1
+    tests:
+      - data: 0
+        result: true
+      - data: 5.5
+        result: true
+      - data: 11
+        result: true
+      - data: 23
         result: false
   - title: type object
     schema: { type: object }
@@ -274,6 +327,16 @@ schemas:
       - data: [1, 2, 3, 4]
         result: false
   - title: Uniqueness
+    schema:
+      type: array
+      uniqueItems: true
+    tests:
+      - data: [1, 2, 3, 4, 5]
+        result: true
+      - data: [1, 2, 3, 3, 4]
+        result: false
+      - data: []
+        result: true
   - title: boolean type
     schema: { type: boolean }
     tests:
@@ -334,9 +397,9 @@ schemas:
           country:
               const: 'United States of America'
     tests:
-      - data: United States of America
+      - data: { "country": "United States of America" }
         result: true
-      - data: France
+      - data: { "country": "Canada" }
         result: false
   - title: Combining schemas
     schema:

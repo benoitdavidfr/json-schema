@@ -30,7 +30,7 @@ if (!isset($_GET['no'])) {
     // vérification que le schéma du doc des tests est conforme au méta-schéma
     $status = $metaSchema->check($tests['jSchema']);
     if ($status->ok())
-      echo "ok schéma des tests conforme au méta-schéma<br>\n";
+      echo "ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n";
     else
       $status->showErrors();
     
@@ -38,7 +38,7 @@ if (!isset($_GET['no'])) {
     $schema = new JsonSchema($tests['jSchema'], false);
     $status = $schema->check($tests);
     if ($status->ok())
-      echo "ok contenu des tests conforme au schéma<br>\n";
+      echo "ok contenu des tests conforme à leur schéma<br>\n";
     else
       $status->showErrors();
 
