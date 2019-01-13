@@ -21,6 +21,7 @@ $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
 
 // affichage de tous les tests sour la forme d'un tableau
 if (!isset($_GET['no'])) {
+  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests</title></head><body>\n";
   echo "<h2>Tests de recette</h2>\n";
   foreach($filetests as $file) {
     $txt = file_get_contents(__DIR__."/$file.yaml");
@@ -31,8 +32,10 @@ if (!isset($_GET['no'])) {
     $status = $metaSchema->check($tests['jSchema']);
     if ($status->ok())
       echo "ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n";
-    else
+    else {
+      echo "Le schéma des tests n'est pas conforme au méta-schéma json-schema draft-07<br>\n";
       $status->showErrors();
+    }
     
     // vérification que le contenu du doc des tests est conforme à son schéma
     $schema = new JsonSchema($tests['jSchema'], false);
@@ -101,6 +104,7 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
     echo "<td><b>Erreur non détectée $comment</b></td></tr>\n";
 }
 
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";
 // exécution d'un test particulier
 $txt = file_get_contents(__DIR__."/$_GET[file].yaml");
 $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);

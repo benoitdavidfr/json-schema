@@ -5,27 +5,24 @@ title: jsonschema.inc.php - conformité d'un objet Php à un schéma JSON
 classes:
 doc: |
   Pour vérifier la conformité d'un objet Php à un schéma, il faut:
-    - créer un objet JsonSchema en fournissant le contenu du schema
-    - appeler sur cet objet la méthode check avec l'objet Php à vérifier
+    - créer un objet JsonSchema en fournissant le contenu du schema sous la forme d'un array Php
+    - appeler sur cet objet la méthode check avec l'instance Php à vérifier
     - analyser le statut retourné (classe JsonSch Status) par cette vérification
   voir https://json-schema.org/understanding-json-schema/reference/index.html (draft-06)
   La classe est utilisée avec des valeurs Php
   3 types d'erreurs sont gérées:
-    - une erreur de contenu de schéma génère une exception
-    - une erreur de contenu d'instance produit une erreur et fait échouer la vérification
-    - une alerte produit une alerte et ne fait pas échouer la vérification
-  Normalement, en vérifiant au préalable que le schéma est conforme au méta-schéma, il ne devrait jamais y avoir 
-  d'exception
-  Il manque:
-    - Tuple validation (array)
-    - allOf (schema)
-    - not (schema)
+    - une structuration non prévue de schéma génère une exception
+    - une non conformité d'une instance à un schéma fait échouer la vérification
+    - une alerte peut être produite dans certains cas sans faire échouer la vérification
+  Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
+  Par rapport à http://json-schema.org/draft-07/schema#, il manque:
     - format (string)
 journal: |
   11-13/1/2018:
     Renforcement des tests et correction de bugs
     ajout additionalProperties, propertyNames, minProperties, maxProperties, minItems, maxItems, contains, uniqueItems
       minLength, maxLength, pattern, Generic Enumerated misc values, Generic const misc values, multiple, dependencies
+      allOf, oneOf, not, Tuple validation, Tuple validation w additional items
   10/1/2018:
     Correction du bug du 9/1
    9/1/2018:
@@ -239,7 +236,7 @@ class JsonSchema {
       if ($this->def)
         return $status;
       else
-        return $status->setError("Schema faux n'acceptant aucune instance");
+        return $status->setError("Schema faux n'acceptant aucune instance pour $id");
     }
     return $this->elt->check($instance, $id, $status);
   }
@@ -312,12 +309,14 @@ class JsonSchemaElt {
     $this->schema = $schema;
   }
   
+  function __toString(): string { return json_encode($this->def, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); }
+  
   function def(): array { return $this->def; }
       
   // le schema d'une des propriétés de l'object ou null si elle n'est pas définie
   private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchemaElt {
     if ($this->verbose)
-      echo "schemaOfProperty(id=$id, propname=$propname)@def=",json_encode($this->def),"<br><br>\n";
+      echo "schemaOfProperty(id=$id, propname=$propname)@def=$this<br><br>\n";
     if (isset($this->def['properties'][$propname]) && $this->def['properties'][$propname])
       return new self($this->def['properties'][$propname], $this->schema, $this->verbose);
     if (isset($this->def['patternProperties'])) {
@@ -336,15 +335,21 @@ class JsonSchemaElt {
   // $id est utilisé pour afficher les erreurs, $status est le statut en entrée, le retour est le statut modifié
   function check($instance, string $id, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
-      echo "check(instance=",json_encode($instance),", id=$id)@def=",json_encode($this->def),"<br><br>\n";
+      echo "check(instance=",json_encode($instance),", id=$id)@def=$this<br><br>\n";
     if (is_bool($this->def))
       return $this->def ? $status : $status->setError("Schema faux n'acceptant aucune instance pour $id");
     elseif (!is_array($this->def))
       throw new Exception("schema non défini pour $id comme array, def=".json_encode($this->def));
     elseif (isset($this->def['$ref']))
       return $this->checkRef($id, $instance, $status);
-    elseif (isset($this->def['anyOf']) || isset($this->def['oneOf']))
+    elseif (isset($this->def['anyOf']))
       return $this->checkAnyOf($id, $instance, $status);
+    elseif (isset($this->def['oneOf']))
+      return $this->checkOneOf($id, $instance, $status);
+    elseif (isset($this->def['allOf']))
+      return $this->checkAllOf($id, $instance, $status);
+    elseif (isset($this->def['not']))
+      return $this->checkNot($id, $instance, $status);
     elseif (!isset($this->def['type']))
       return $this->checkNoType($id, $instance, $status);
     elseif (is_bool($this->def['type']))
@@ -354,13 +359,12 @@ class JsonSchemaElt {
       foreach ($this->def['type'] as $type) {
         if (!is_string($type))
           throw new Exception("type ".json_encode($type)." not a string");
-        $elt = ['type'=> $type];
-        if (($type == 'object') && (isset($this->def['properties'])))
-          $elt['properties'] = $this->def['properties'];
+        $elt = $this->def;
+        $elt['type'] = $type;
         $anyOf[] = $elt;
       }
-      $elt = new self(['anyOf'=> $anyOf], $this->schema, $this->verbose);
-      return $elt->checkAnyOf($id, $instance, $status);
+      $schAnyOf = new self(['anyOf'=> $anyOf], $this->schema, $this->verbose);
+      return $schAnyOf->checkAnyOf($id, $instance, $status);
     }
     elseif (!is_string($this->def['type']))
       throw new Exception("def[type]=".json_encode($this->def['type'])." ni string ni list pour $id");
@@ -405,12 +409,11 @@ class JsonSchemaElt {
     }
   }
   
-  // traitement du cas où le schema est défini par un anyOf ou un oneOf
+  // traitement du cas où le schema est défini par un anyOf
   private function checkAnyOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
-      echo "checkAnyOf(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
-    $anyOf = isset($this->def['oneOf']) ? $this->def['oneOf'] : $this->def['anyOf'];
-    foreach ($anyOf as $schemaDef) {
+      echo "checkAnyOf(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    foreach ($this->def['anyOf'] as $schemaDef) {
       $schema = new self($schemaDef, $this->schema, $this->verbose);
       $status2 = new JsonSchStatus;
       $status2 = $schema->check($instance, $id, $status2);
@@ -420,10 +423,71 @@ class JsonSchemaElt {
     return $status->setError("aucun schema anyOf pour $id");
   }
   
+  // traitement du cas où le schema est défini par un oneOf
+  private function checkOneOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
+    if ($this->verbose)
+      echo "checkOneOf(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    $done = false;
+    foreach ($this->def['oneOf'] as $schemaDef) {
+      $schema = new self($schemaDef, $this->schema, $this->verbose);
+      $status2 = new JsonSchStatus;
+      $status2 = $schema->check($instance, $id, $status2);
+      if ($status2->ok())
+        if (!$done) {
+          $status->append($status2);
+          $done = true;
+        }
+        else
+          return $status->setError("Plusieurs schema oneOf pour $id");
+    }
+    if ($done)
+      return $status;
+    else
+      return $status->setError("aucun schema oneOf pour $id");
+  }
+  
+  // traitement du cas où le schema est défini par un allOf
+  private function checkAllOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
+    if ($this->verbose)
+      echo "checkAllOf(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    foreach ($this->def['allOf'] as $no => $schemaDef) {
+      $schema = new self($schemaDef, $this->schema, $this->verbose);
+      $status2 = new JsonSchStatus;
+      $status2 = $schema->check($instance, $id, $status2);
+      if ($status2->ok())
+        $status->append($status2);
+      else
+        return $status->setError("schema $no de allOf non vérifié pour $id");
+    }
+    return $status;
+  }
+  
+  // traitement du cas où le schema est défini par un not
+  private function checkNot(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
+    if ($this->verbose)
+      echo "checkNot(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    $schema = new self($this->def['not'], $this->schema, $this->verbose);
+    $status2 = new JsonSchStatus;
+    $status2 = $schema->check($instance, $id, $status2);
+    if ($status2->ok())
+      return $status->setError("Sous-schema de not ok pour $id");
+    else
+      return $status;
+  }
+
   // traitement du cas où le schema est défini sans champ type
   private function checkNoType(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
-    if (isset($this->def['properties'])) // s'il existe un champ properties alors je considère que c'est un objet
-      return $this->checkObject($id, $instance, $status);
+    $checkerByFields = [
+       // s'il existe un champ properties ou patternProperties alors je vérifie les contraintes d'objet, ...
+      'checkObject' => ['properties', 'patternProperties'],
+      'checkArray' => ['items'],
+      'checkNumberOrInteger' => ['minimum', 'exclusiveMinimum', 'maximum', 'exclusiveMaximum', 'multipleOf'],
+      'checkString' => ['maxLength', 'minLength', 'pattern'],
+    ];
+    foreach ($checkerByFields as $checker => $fields) {
+      if (array_intersect(array_keys($this->def), $fields))
+        $status = $this->$checker($id, $instance, $status);
+    }
     if (isset($this->def['enum']) && !in_array($instance, $this->def['enum']))
       $status->setError("Erreur $id=\"".json_encode($instance)."\" not in "
           ."enum=(\"".json_encode( $this->def['enum'])."\")");
@@ -436,7 +500,7 @@ class JsonSchemaElt {
   // traitement du cas où le type indique que l'instance est un object
   private function checkObject(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
-      echo "checkObject(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
+      echo "checkObject(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
     if (!is_array($instance) || ($instance && !is_assoc_array($instance))) // Attention, la liste vide est un objet
       return $status->setError("$id !object");
     
@@ -513,8 +577,7 @@ class JsonSchemaElt {
   // traitement du cas où le type indique que la valeur est un object
   private function checkArray(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
-      echo "checkArray(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
-    
+      echo "checkArray(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
     if (!is_array($instance) || is_assoc_array($instance))
       return $status->setError("$id !array");
     if (isset($this->def['minItems']) && (count($instance) < $this->def['minItems'])) {
@@ -551,14 +614,33 @@ class JsonSchemaElt {
       return $status;
     if (is_bool($this->def['items']) && $this->def['items'])
       return $status;
-    if (!is_array($this->def['items']) || !is_assoc_array($this->def['items']))
-      throw new Exception("items devrait être un objet ou un booléen pour $id");
+    if (!is_array($this->def['items']))
+      throw new Exception("items devrait être un objet, un array ou un booléen pour $id");
+    if (!is_assoc_array($this->def['items']))
+      return $this->checkTuple($id, $instance, $status);
     $schOfItem = new self($this->def['items'], $this->schema, $this->verbose);
     foreach ($instance as $i => $elt)
       $status = $schOfItem->check($elt, "$id.$i", $status);
     return $status;
   }
   
+  // traitement du cas où le type indique que la valeur est un object
+  private function checkTuple(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
+    if ($this->verbose)
+      echo "checkTuple(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    foreach ($this->def['items'] as $i => $defElt) {
+      if (isset($instance[$i])) {
+        $schOfElt = new self($defElt, $this->schema, $this->verbose);
+        $status = $schOfElt->check($instance[$i], "$id.$i", $status);
+      }
+    }
+    if (in_array('additionalItems', array_keys($this->def)) && !$this->def['additionalItems']) {
+      if (count(array_keys($instance)) > count(array_keys($this->def['items'])))
+        return $status->setError("additionalItems forbiden for $id");
+    }
+    return $status;
+  }
+
   // traitement du cas où le type indique que l'instance est un numérique ou un entier
   private function checkNumberOrInteger(string $id, $number, JsonSchStatus $status): JsonSchStatus {
     if (($this->def['type']=='number') && (is_string($number) || !is_numeric($number)))
@@ -578,7 +660,7 @@ class JsonSchemaElt {
     return $status;
   }
   
-  // test l'absence de partie fractionaire du nombre passé en paramètre, en pratique elle doit être très faible
+  // teste l'absence de partie fractionaire du nombre passé en paramètre, en pratique elle doit être très faible
   static private function hasNoFractionalPart($f): bool { return abs($f - floor($f)) < 1e-15; }
   
   // traitement du cas où le type indique que l'instance est une chaine ou une date

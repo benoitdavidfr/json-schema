@@ -1,7 +1,9 @@
-title: tests utilisant les exemples donnés dans la doc json-schema
+title: tests utilisant les exemples donnés dans la doc json-schema + draft-07 lui-même
 jSchema:
   type: object
   properties:
+    title: {type: string}
+    source: {type: string}
     schemas:
       type: array
       items:
@@ -12,8 +14,14 @@ jSchema:
           schema:
             $ref: http://localhost/schema/json-schema.schema.json
           tests: { type: array }
+  additionalProperties: false
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
+  - title: json-schema draft-07
+    schema: {$ref: http://localhost/schema/json-schema.schema.json}
+    tests:
+      - data:  {$ref: http://localhost/schema/json-schema.schema.json}
+        result: true
   - title: type keyword 
     schema: {type: number}
     tests:
@@ -345,17 +353,16 @@ schemas:
         result: false
       - data: [1, 2, 3, 4, 5]
         result: true
-  - title: Tuple validation (non implémenté)
+  - title: Tuple validation
     schema:
       type: array
       items:
-          - type: number
-          - type: string
-          - type: string
-            enum: [ Street, Avenue, Boulevard ]
-          - type: string
-            enum: [ NW, NE, SW, SE ]
-    schemaErrorComment: cas non implémenté
+        - type: number
+        - type: string
+        - type: string
+          enum: [ Street, Avenue, Boulevard ]
+        - type: string
+          enum: [ NW, NE, SW, SE ]
     tests:
       - data: [1600, "Pennsylvania", "Avenue", "NW"]
         result: true
@@ -368,6 +375,22 @@ schemas:
       - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
         result: true
   - title: Tuple validation + additionalItems
+    schema:
+      items:
+        - type: number
+        - type: string
+        - type: string
+          enum: [ Street, Avenue, Boulevard ]
+        - type: string
+          enum: [ NW, NE, SW, SE ]
+      additionalItems: false
+    tests:
+      - data: [1600, "Pennsylvania", "Avenue", "NW"]
+        result: true
+      - data: [1600, "Pennsylvania", "Avenue"]
+        result: true
+      - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
+        result: false
   - title: minItems + maxItems
     schema:
       type: array
@@ -459,13 +482,13 @@ schemas:
         result: true
       - data: { "country": "Canada" }
         result: false
-  - title: Combining schemas
+  - title: Combining schemas anyOf
     schema:
       anyOf:
-          -   type: string
-              maxLength: 5
-          -   type: number
-              minimum: 0
+        - type: string
+          maxLength: 5
+        - type: number
+          minimum: 0
     tests:
       - data: short
         result: true
@@ -475,5 +498,65 @@ schemas:
         result: true
       - data: -5
         result: false
-
-
+  - title: Combining schemas oneOf
+    schema:
+      oneOf:
+        - type: string
+          maxLength: 5
+        - type: number
+          minimum: 0
+    tests:
+      - data: short
+        result: true
+      - data: too long
+        result: false
+      - data: 12
+        result: true
+      - data: -5
+        result: false
+  - title: Combining schemas allOf ok
+    schema:
+      allOf:
+        - type: string
+        - maxLength: 5
+    tests:
+      - data: short
+        result: true
+      - data: too long
+        result: false
+  - title: Combining schemas allOf impossible
+    schema:
+      allOf:
+        - type: string
+        - type: number
+    tests:
+      - data: No way
+        result: false
+      - data: -1
+        result: false
+  - title: Combining schemas oneOf
+    schema:
+      oneOf:
+        - type: number
+          multipleOf: 5
+        - type: number
+          multipleOf: 3
+      
+    tests:
+      - data: 10
+        result: true
+      - data: 9
+        result: true
+      - data: 2
+        result: false
+      - data: 15
+        result: false
+  - title: Combining schemas not
+    schema: { not: { type: string } }
+    tests:
+      - data: 42
+        result: true
+      - data: { "key": "value" }
+        result: true
+      - data: I am a string
+        result: false
