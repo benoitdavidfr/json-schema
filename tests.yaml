@@ -214,7 +214,65 @@ schemas:
         result: true
       - data: { "a": 0, "b": 1, "c": 2, "d": 3 }
         result: false
-  - title: Dependencies
+  - title: Property dependencies
+    schema:
+      type: object
+      properties:
+          name: { type: string }
+          credit_card: { type: number }
+          billing_address: { type: string }
+      required: [ name ]
+      dependencies:
+          credit_card:
+              - billing_address
+    tests:
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+          billing_address: 555 Debtor's Lane
+        result: true
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+        result: false
+      - data:
+          name: John Doe
+        result: true
+      - data:
+          name: John Doe
+          billing_address: 555 Debtor's Lane
+        result: true
+  - title: Schema dependencies
+    schema:
+      type: object
+      properties:
+        name: { type: string }
+        credit_card: { type: number }
+      required: [ name ]
+      dependencies:
+        credit_card:
+          properties:
+            billing_address: { type: string }
+          required: [ billing_address ]
+    tests:
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+          billing_address: 555 Debtor's Lane
+        result: true
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+        result: false
+      - data:
+          name: John Doe
+          billing_address: 555 Debtor's Lane
+        result: true
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+          billing_address: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+        result: false
   - title: Pattern Properties 
     schema:
       type: object

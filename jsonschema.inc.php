@@ -17,7 +17,6 @@ doc: |
   Normalement, en vérifiant au préalable que le schéma est conforme au méta-schéma, il ne devrait jamais y avoir 
   d'exception
   Il manque:
-    - dependencies (object)
     - Tuple validation (array)
     - allOf (schema)
     - not (schema)
@@ -26,7 +25,7 @@ journal: |
   11-13/1/2018:
     Renforcement des tests et correction de bugs
     ajout additionalProperties, propertyNames, minProperties, maxProperties, minItems, maxItems, contains, uniqueItems
-      minLength, maxLength, pattern, Generic Enumerated misc values, Generic const misc values, multiple
+      minLength, maxLength, pattern, Generic Enumerated misc values, Generic const misc values, multiple, dependencies
   10/1/2018:
     Correction du bug du 9/1
    9/1/2018:
@@ -436,6 +435,8 @@ class JsonSchemaElt {
   
   // traitement du cas où le type indique que l'instance est un object
   private function checkObject(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
+    if ($this->verbose)
+      echo "checkObject(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     if (!is_array($instance) || ($instance && !is_assoc_array($instance))) // Attention, la liste vide est un objet
       return $status->setError("$id !object");
     
@@ -446,6 +447,7 @@ class JsonSchemaElt {
           $status->setError("propriété $id.$prop absente");
       }
     }
+    
     // Si propertyNames est défini alors vérif que chaque propriété respecte le pattern
     if (isset($this->def['propertyNames'])) {
       $propertyNames = $this->def['propertyNames'];
@@ -462,12 +464,14 @@ class JsonSchemaElt {
       if ($undef = array_diff(array_keys($instance), $properties))
         $status->setWarning("Attention: propriétés ".implode(', ',$undef)." de $id non définie(s) par le schéma");
     }
+    
     // minProperties
     if (isset($this->def['minProperties']) && (count(array_keys($instance)) < $this->def['minProperties'])) {
       $nbProp = count(array_keys($instance));
       $minProperties = $this->def['minProperties'];
       $status->setError("objet $id a $nbProp propriétés < minProperties = $minProperties");
     }
+    // maxProperties
     if (isset($this->def['maxProperties']) && (count(array_keys($instance)) > $this->def['maxProperties'])) {
       $nbProp = count(array_keys($instance));
       $maxProperties = $this->def['maxProperties'];
@@ -478,6 +482,29 @@ class JsonSchemaElt {
     foreach ($instance as $prop => $pvalue) {
       if ($schProp = $this->schemaOfProperty($id, $prop, $status)) {
         $status = $schProp->check($pvalue, "$id.$prop", $status);
+      }
+    }
+    
+    // vérification des dépendances
+    if (isset($this->def['dependencies']) && $this->def['dependencies']) {
+      foreach ($this->def['dependencies'] as $propname => $dependency) {
+        //echo "vérification de la dépendance sur $propname<br>\n";
+        if (isset($instance[$propname])) { // alors la dépendance doit être vérifiée
+          //echo "dependency=",json_encode($dependency),"<br>\n";
+          if (!is_array($dependency))
+            throw new Exception("Erreur dependency pour $id.$propname ni list ni assoc_array");
+          elseif (!is_assoc_array($dependency)) { // property depedency
+            //echo "vérification de la dépendance de propriété sur $propname<br>\n";
+            foreach ($dependency as $dependentPropName)
+              if (!isset($instance[$dependentPropName]))
+                $status->setError("$id.$dependentPropName doit être défini car $id.$propname l'est");
+          }
+          else { // schema depedency
+            //echo "vérification de la dépendance de schéma sur $propname<br>\n";
+            $schProp = new self($dependency, $this->schema, $this->verbose);
+            $status = $schProp->check($instance, $id, $status);
+          }
+        }
       }
     }
     return $status;
@@ -532,7 +559,6 @@ class JsonSchemaElt {
     return $status;
   }
   
-  
   // traitement du cas où le type indique que l'instance est un numérique ou un entier
   private function checkNumberOrInteger(string $id, $number, JsonSchStatus $status): JsonSchStatus {
     if (($this->def['type']=='number') && (is_string($number) || !is_numeric($number)))
@@ -552,6 +578,7 @@ class JsonSchemaElt {
     return $status;
   }
   
+  // test l'absence de partie fractionaire du nombre passé en paramètre, en pratique elle doit être très faible
   static private function hasNoFractionalPart($f): bool { return abs($f - floor($f)) < 1e-15; }
   
   // traitement du cas où le type indique que l'instance est une chaine ou une date
