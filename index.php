@@ -218,9 +218,9 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
 if ($_GET['action'] == 'check') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema check</title></head><body>\n";
   if (is_file(__DIR__."/$_GET[file].yaml"))
-    $content = Yaml::parse(file_get_contents(__DIR__."/$_GET[file].yaml"), Yaml::PARSE_DATETIME);
+    $content = JsonSchema::jsonfile_get_contents(__DIR__."/$_GET[file].yaml");
   elseif (is_file(__DIR__."/$_GET[file].json"))
-    $content = json_decode(file_get_contents(__DIR__."/$_GET[file].json"), true);
+    $content = JsonSchema::jsonfile_get_contents(__DIR__."/$_GET[file].json");
   else
     die("$_GET[file] ni json ni yaml");
 
@@ -230,11 +230,13 @@ if ($_GET['action'] == 'check') {
     $schema = new JsonSchema($content[$key]);
     $status = $schema->check($content);
     if ($status->ok()) {
-      $status->showWarnings();
       echo "ok instance conforme au schéma<br>\n";
+      $status->showWarnings();
     }
-    else
+    else {
+      echo "KO instance non conforme au schéma<br>\n";
       $status->showErrors();
+    }
     $content = $content[$key];
   }
   $schema = new JsonSchema(__DIR__.'/json-schema.schema.json');
@@ -242,8 +244,10 @@ if ($_GET['action'] == 'check') {
   if ($status->ok()) {
     echo "ok schéma conforme au méta-schéma<br>\n";
   }
-  else
+  else {
+    echo "KO schéma NON conforme au méta-schéma<br>\n";
     $status->showErrors();
+  }
   
   die();
 }

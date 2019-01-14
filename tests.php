@@ -21,12 +21,16 @@ $filetests = ['tests','testsformat','tests2'];
 $verbose = false;
 $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
 
+//echo "<pre>"; print_r($_SERVER); die();
+
 // affichage de tous les tests sour la forme d'un tableau
 if (!isset($_GET['no'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests</title></head><body>\n";
   echo "<h2>Tests de recette</h2>\n";
   foreach($filetests as $file) {
     $txt = file_get_contents(__DIR__."/$file.yaml");
+    if ($_SERVER['SERVER_NAME']<>'localhost')
+      $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
     $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);
     echo "<h2>$tests[title]</h2>\n";
 
@@ -109,6 +113,8 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";
 // exécution d'un test particulier
 $txt = file_get_contents(__DIR__."/$_GET[file].yaml");
+if ($_SERVER['SERVER_NAME']<>'localhost')
+  $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
 $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);
 if (strpos($_GET['no'], '.') === false) {
   $nosch = $_GET['no'];

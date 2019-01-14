@@ -190,6 +190,8 @@ class JsonSchema {
     //echo "jsonfile_get_contents(path=$path)<br>\n";
     if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
+    if (isset($_SERVER['SERVER_NAME']) && ($_SERVER['SERVER_NAME']<>'localhost'))
+      $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
     if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
       try {
         return Yaml::parse($txt, Yaml::PARSE_DATETIME);
@@ -326,6 +328,7 @@ doc: |
   classe interne utilisée par JsonSchema
 */
 class JsonSchemaElt {
+  const RFC3339_EXTENDED = 'Y-m-d\TH:i:s.vP'; // DateTimeInterface::RFC3339_EXTENDED
   private $verbose; // verbosité boolean
   private $def; // définition de l'élément courant du schema sous la forme d'un array ou d'un booléen Php
   private $schema; // l'objet schema contenant l'élément, indispensable pour retrouver ses définitions
@@ -698,7 +701,7 @@ class JsonSchemaElt {
   // traitement du cas où le type indique que l'instance est une chaine ou une date
   private function checkString(string $id, $string, JsonSchStatus $status): JsonSchStatus {
     if (is_object($string) && (get_class($string)=='DateTime'))
-      $string = $string->format(DateTimeInterface::ATOM);
+      $string = $string->format(self::RFC3339_EXTENDED);
     elseif (!is_string($string))
       return $status->setError("Erreur $id=".json_encode($string)." !string");
     if (isset($this->def['enum']) && !in_array($string, $this->def['enum']))
@@ -756,7 +759,6 @@ class JsonSchemaElt {
 
 
 if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSchema 
-  
   if (isset($_GET['test']) && ($_GET['test']=='JsonSchema')) {
     echo "Test JsonSchema<br>\n";
     foreach ([['type'=> 'string'], ['type'=> 'number']] as $schemaDef) {
