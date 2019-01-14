@@ -1,0 +1,169 @@
+title: tests des formats
+jSchema:
+  type: object
+  properties:
+    title: {type: string}
+    source: {type: string}
+    schemas:
+      type: array
+      items:
+        type: object
+        required: [title]
+        properties:
+          title: { type: string }
+          schema:
+            $ref: http://localhost/schema/json-schema.schema.json
+          tests: { type: array }
+  additionalProperties: false
+source: https://json-schema.org/understanding-json-schema/reference/index.html
+schemas:
+  - title: date-time - RFC 3339, section 5.6.
+    schema:
+      type: string
+      format: date-time
+    tests:
+      - data: 1985-04-12T23:20:50.52Z
+        result: true
+      - data: 1996-12-19T16:39:57.1234-08:00
+        result: true
+      - data: '1985-04-12T23:20:50.52Z'
+        result: true
+      - data: '1996-12-19T16:39:57.1234-08:00'
+        result: true
+      - data: '1996-12-19T16:39+01:00'
+        result: true
+      - data: '1996-12-19T16+01:00'
+        result: false
+  - title: email - RFC 5322, section 3.4.1.
+    schema:
+      type: string
+      format: email
+    tests:
+      - data: jdoe@machine.example
+        result: true
+      - data: mary@example.net
+        result: true
+      - data: j-brown@other.example
+        result: true
+      - data: xxxxx
+        result: false
+  - title: hostname - RFC 1034, section 3.1.
+    schema:
+      type: string
+      format: hostname
+    tests:
+      - data: machine.example
+        result: true
+      - data: example.net
+        result: true
+      - data: other.example
+        result: true
+      - data: mary@example.net
+        result: false
+  - title: ipv4 - RFC 2673, section 3.2.
+    schema:
+      type: string
+      format: ipv4
+    tests:
+      - data: '208.116.0.0/14'
+        result: true
+      - data: '208.116.10.25'
+        result: true
+      - data: mary@example.net
+        result: false
+  - title: ipv6 - RFC 2373, section 2.2.
+    schema:
+      type: string
+      format: ipv6
+    tests:
+      - data: FEDC:BA98:7654:3210:FEDC:BA98:7654:3210
+        result: true
+      - data: '1080:0:0:0:8:800:200C:417A'
+        result: true
+      - data: '1080::8:800:200C:417A'
+        result: true
+      - data: FF01::101
+        result: true
+      - data: ::1
+        result: true
+      - data: ::
+        result: true
+      - data: mary@example.net
+        result: false
+  - title: uri - RFC3986
+    schema:
+      type: string
+      format: uri
+    tests:
+      - data: ftp://ftp.is.co.za/rfc/rfc1808.txt
+        result: true
+      - data: http://www.ietf.org/rfc/rfc2396.txt
+        result: true
+      - data: ldap://[2001:db8::7]/c=GB?objectClass?one
+        result: true
+      - data: mailto:John.Doe@example.com
+        result: true
+      - data: news:comp.infosystems.www.servers.unix
+        result: true
+      - data: tel:+1-816-555-1212
+        result: true
+      - data: telnet://192.0.2.16:80/
+        result: true
+      - data: urn:oasis:names:specification:docbook:dtd:xml:4.1.2
+        result: true
+      - data: mary@example.net
+        result: false
+  - title: uri-reference - RFC3986, section 4.1.
+    schema:
+      type: string
+      format: uri-reference
+    tests:
+      - data: ftp://ftp.is.co.za/rfc/rfc1808.txt
+        result: true
+      - data: http://www.ietf.org/rfc/rfc2396.txt
+        result: true
+      - data: ldap://[2001:db8::7]/c=GB?objectClass?one
+        result: true
+      - data: mailto:John.Doe@example.com
+        result: true
+      - data: news:comp.infosystems.www.servers.unix
+        result: true
+      - data: tel:+1-816-555-1212
+        result: true
+      - data: telnet://192.0.2.16:80/
+        result: true
+      - data: urn:oasis:names:specification:docbook:dtd:xml:4.1.2
+        result: true
+      - data: mary@example.net
+        result: true
+      - data: /rfc/rfc2396.txt
+        result: true
+  - title: json-pointer - RFC6901
+    description: |
+      There is more discussion on the use of JSON Pointer within JSON Schema in Structuring a complex schema.
+      Note that this should be used only when the entire string contains only JSON Pointer content,e.g. /foo/bar.
+      JSON Pointer URI fragments, e.g. #/foo/bar/ should use "uri" or "uri-reference".
+    schema:
+      type: string
+      format: json-pointer
+    tests:
+      - data: http://www.ietf.org/rfc/rfc2396.txt#/warning
+        result: true
+      - data: /rfc/rfc2396.txt#/warning
+        result: true
+      - data: '#/warning'
+        result: true
+      - data: http://www.ietf.org/rfc/rfc2396.txt#warning
+        result: false
+  - title: uri-template - RFC6570.
+    description: If you don’t already know what a URI Template is, you probably don’t need this value.
+    schema:
+      type: string
+      format: uri-template
+    tests:
+      - data: http://example.com/~{username}/
+        result: true
+      - data: http://example.com/dictionary/{term:1}/{term}
+        result: true
+      - data: http://example.com/search{?q,lang}
+        result: true

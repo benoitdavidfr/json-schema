@@ -1,15 +1,21 @@
-name: schema
-title: schema - classe de schema JSON permettant de vérifier la conformité d'une instance à un schéma JSON
+title: schema - validation de la conformité d'une instance à un schéma JSON
+path: /schema
 doc: |
   Utilisation de schema JSON
   https://json-schema.org/
-  transfert des exemples dans ex et geojson
+  exemples dans ex et geojson
 journal: |
-  1-2/1/2019:
+  1-14/1/2019:
     améliorations de jsonschema.inc.php et gestion d'exemples
   31/12/2018:
     création de ce projet
 phpScripts:
   - /schema/index.php
+  - /schema/tests.php
 phpIncludes:
   - /schema/jsonschema.inc.php
+htmlFiles:
+  - /schema/json-schema.schema.yaml
+  - /schema/tests.yaml
+  - /schema/testsformat.yaml
+  - /schema/tests2.yaml

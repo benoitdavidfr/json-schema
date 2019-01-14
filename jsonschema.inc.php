@@ -15,14 +15,13 @@ doc: |
     - une non conformité d'une instance à un schéma fait échouer la vérification
     - une alerte peut être produite dans certains cas sans faire échouer la vérification
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
-  Par rapport à http://json-schema.org/draft-07/schema#, il manque:
-    - format (string)
+  Ce validateur implémente la spec http://json-schema.org/draft-07/schema# en totalité.
 journal: |
-  11-13/1/2018:
+  11-14/1/2018:
     Renforcement des tests et correction de bugs
     ajout additionalProperties, propertyNames, minProperties, maxProperties, minItems, maxItems, contains, uniqueItems
       minLength, maxLength, pattern, Generic Enumerated misc values, Generic const misc values, multiple, dependencies
-      allOf, oneOf, not, Tuple validation, Tuple validation w additional items
+      allOf, oneOf, not, Tuple validation, Tuple validation w additional items, format
   10/1/2018:
     Correction du bug du 9/1
    9/1/2018:
@@ -82,6 +81,7 @@ if (!function_exists('is_assoc_array')) {
 /*PhpDoc: classes
 name: JsonSchema
 title: class JsonSchema - schéma JSON défini soit dans un fichier par un chemin soit par un array Php
+methods:
 doc: |
   La class JsonSchema correspond à un schéma JSON défini dans un fichier par un chemin
   de la forme {filePath}(#{eltPath})? où:
@@ -99,8 +99,14 @@ class JsonSchema {
   private $elt; // objet JsonSchemaElt correspondant au schéma
   private $status; // objet JsonSchStatus définissant le statut issu de la création du schéma
   
-  // le premier paramètre est soit le chemin de l'objet JSON dans un fichier, soit son contenu comme array Php
-  // le second paramètre contient éventuellement le schema père
+  /*PhpDoc: methods
+  name: __construct
+  title: __construct($def, bool $verbose=false, ?JsonSchema $parent=null) - création d'un JsonSchema
+  doc: |
+    le premier paramètre est soit le chemin de l'objet JSON dans un fichier, soit son contenu comme array Php
+    le second paramètre indique éventuellement si l'analyse doit être commentée
+    le troisième paramètre contient éventuellement le schema père et n'est utilisé qu'en interne à la classe
+  */
   function __construct($def, bool $verbose=false, ?JsonSchema $parent=null) {
     $this->verbose = $verbose;
     if ($verbose)
@@ -226,7 +232,15 @@ class JsonSchema {
     }
   }
   
-  // Un check() prend un statut initial et le modifie pour le renvoyer à la fin
+  /*PhpDoc: methods
+  name: check
+  title: "check($instance, string $id='', JsonSchStatus $status=null): JsonSchStatus - vérification de conformité d'une instance à JsonSchema, renvoit un JsonSchStatus"
+  doc: |
+    Un check() prend un statut initial et le modifie pour le renvoyer à la fin
+    le premier paramètre est l'instance comme valeur Php
+    le second paramètre indique éventuellement un identificateur utilisé dans les erreurs
+    le troisième paramètre fournit éventuellement un statut en entrée et n'est utilisé qu'en interne à la classe
+  */
   function check($instance, string $id='', JsonSchStatus $status=null): JsonSchStatus {
     // au check initial, je clone le statut initial du schéma car je ne veux pas partager le statut entre check
     if (!$status)
@@ -245,6 +259,7 @@ class JsonSchema {
 /*PhpDoc: classes
 name: JsonSchema
 title: class JsonSchStatus - définit un statut de vérification de conformité d'une instance
+methods:
 doc: |
   La classe JsonSchStatus définit le statut d'une vérification de conformité d'une instance
   Un objet de cette classe est retourné par une vérification.
@@ -257,13 +272,22 @@ class JsonSchStatus {
   // ajoute une erreur
   function setError(string $message): JsonSchStatus { $this->errors[] = $message; return $this; }
   
-  // ok ssi pas d'erreur
+  /*PhpDoc: methods
+  name: ok
+  title: "ok(): bool - true ssi pas d'erreur"
+  */
   function ok(): bool { return count($this->errors)==0; }
   
-  // retourne les erreurs
+  /*PhpDoc: methods
+  name: errors
+  title: "errors(): array - retourne les erreurs"
+  */
   function errors(): array { return $this->errors; }
   
-  // affiche les erreurs
+  /*PhpDoc: methods
+  name: showErrors
+  title: "showErrors(): void - affiche les erreurs"
+  */
   function showErrors(): void {
     if ($this->errors)
       echo '<pre><b>',Yaml::dump(['Errors'=>$this->errors], 999),"</b></pre>\n";
@@ -272,10 +296,16 @@ class JsonSchStatus {
   // ajoute un warning
   function setWarning(string $message): void { $this->warnings[] = $message; }
   
-  // retourne les alertes
+  /*PhpDoc: methods
+  name: warnings
+  title: "warnings(): array - retourne les alertes"
+  */
   function warnings(): array { return $this->warnings; }
   
-  // afffiche les warnings
+  /*PhpDoc: methods
+  name: showWarnings
+  title: "showWarnings(): void - affiche les warnings"
+  */
   function showWarnings(): void {
     if ($this->warnings)
       echo '<pre><i>',Yaml::dump(['Warnings'=> $this->warnings], 999),"</i></pre>";
@@ -292,6 +322,8 @@ class JsonSchStatus {
 /*PhpDoc: classes
 name: JsonSchemaElt
 title: class JsonSchemaElt - définit un élémént d'un schema JSON
+doc: |
+  classe interne utilisée par JsonSchema
 */
 class JsonSchemaElt {
   private $verbose; // verbosité boolean
@@ -665,7 +697,9 @@ class JsonSchemaElt {
   
   // traitement du cas où le type indique que l'instance est une chaine ou une date
   private function checkString(string $id, $string, JsonSchStatus $status): JsonSchStatus {
-    if (!is_string($string) && !(is_object($string) && (get_class($string)=='DateTime')))
+    if (is_object($string) && (get_class($string)=='DateTime'))
+      $string = $string->format(DateTimeInterface::ATOM);
+    elseif (!is_string($string))
       return $status->setError("Erreur $id=".json_encode($string)." !string");
     if (isset($this->def['enum']) && !in_array($string, $this->def['enum']))
       $status->setError("Erreur $id=\"$string\" not in enum=(\"".implode('","', $this->def['enum'])."\")");
@@ -680,9 +714,35 @@ class JsonSchemaElt {
       if (!preg_match("!$pattern!", $string))
         $status->setError("$string don't match $pattern");
     }
+    if (isset($this->def['format']))
+      $status = $this->checkStringFormat($id, $string, $status);
     return $status;
   }
   
+  // test des formats, certains motifs sont à améliorer
+  private function checkStringFormat(string $id, string $string, JsonSchStatus $status): JsonSchStatus {
+    $knownFormats = [
+      'date-time'=> '^\d\d\d\d-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(([-+]\d\d:\d\d)|Z)$', // RFC 3339, section 5.6.
+      'email'=> '^[-a-zA-Z0-9_\.]+@[-a-zA-Z0-9_\.]+$', // A vérifier - email address, see RFC 5322, section 3.4.1.
+      'hostname'=> '^[-a-zA-Z0-9\.]+$', // Internet host name, see RFC 1034, section 3.1.
+      'ipv4'=> '^\d+\.\d+\.\d+\.\d+(/\d+)?$', // IPv4 address, as defined in RFC 2673, section 3.2.
+      'ipv6'=> '^[:0-9a-fA-F]+$', // IPv6 address, as defined in RFC 2373, section 2.2.
+      'uri'=> '^(([^:/?#]+):)(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$', // A URI, according to RFC3986.
+      'uri-reference'=> '^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$', // A URI Reference, RFC3986, section 4.1.
+      'json-pointer'=> '^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(/[^/]+)*)?$', // A JSON Pointer, RFC6901.
+      'uri-template'=> '^(([^:/?#]+):)(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?$', // A URI Template, RFC6570.
+    ];
+    $format = $this->def['format'];
+    if (!isset($knownFormats[$format])) {
+      $status->setWarning("format $format inconnu pour $id");
+      return $status;
+    }
+    $pattern = $knownFormats[$format];
+    if (!preg_match("!$pattern!", $string))
+      $status->setError("$string don't match $format");
+    return $status;
+  }
+
   // traitement du cas où le type indique que l'instance est un booléen
   private function checkBoolean(string $id, $bool, JsonSchStatus $status): JsonSchStatus {
     return is_bool($bool) ? $status : $status->setError("Erreur $id=".json_encode($bool)." !boolean");

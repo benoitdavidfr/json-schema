@@ -1,8 +1,10 @@
 <?php
 /*PhpDoc:
 name: tests.php
-title: tests.php - tests de la classe JsonSchema
+title: tests.php - éxécute un ensemble de tests de la classe JsonSchema
 doc: |
+  Par défaut lit les différents fichiers de test et exécute chaque test.
+  Permet aussi dexécuter un test particulier.
 journal: |
   11/1/2019
     première version
@@ -12,7 +14,7 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
-$filetests = ['tests','tests2'];
+$filetests = ['tests','testsformat','tests2'];
 //$filetests = ['tests2'];
 //$filetests = ['tests'];
 
@@ -54,7 +56,7 @@ if (!isset($_GET['no'])) {
       try {
         $schema = new JsonSchema($sch['schema'], $verbose);
         foreach ($sch['tests'] as $notest => $test) {
-          if (isset($test['data']['$ref']))
+          if (is_array($test['data']) && isset($test['data']['$ref']))
             $data = JsonSchema::jsonfile_get_contents($test['data']['$ref']);
           else
             $data = $test['data'];
@@ -86,7 +88,7 @@ if (!isset($_GET['no'])) {
 
 // réalise un test et affiche le résultat
 function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool $result, string $comment) {
-  if (isset($data['$ref'])) {
+  if (is_array($data) && isset($data['$ref'])) {
     echo "lecture du fichier ",$data['$ref'],"<br>";
     $data = JsonSchema::jsonfile_get_contents($data['$ref']);
     var_dump($data);
