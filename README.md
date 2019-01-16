@@ -15,5 +15,5 @@ Dans tous les cas, la méthode $status->showWarnings() affiche les alertes.
 Ce validateur peut être utilisé avec des fichiers Yaml.
 Il suffit de charger le fichier comme array Php.
 
-Cette implémentation est fondée sur la définition http://json-schema.org/draft-07/schema#
+Cette implémentation est fondée sur la définition http://json-schema.org/draft-06/schema#
 Elle est complète.
