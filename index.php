@@ -217,6 +217,11 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
 // dans un fichier de données, le schéma est défini par le champ jSchema ou json-schema
 if ($_GET['action'] == 'check') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema check</title></head><body>\n";
+  $verbose = false;
+  if (isset($_GET['verbose']))
+    $verbose = true;
+  else
+    echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]&amp;verbose=true'>verbose</a><br>\n";
   if (is_file(__DIR__."/$_GET[file].yaml"))
     $content = JsonSchema::jsonfile_get_contents(__DIR__."/$_GET[file].yaml");
   elseif (is_file(__DIR__."/$_GET[file].json"))
@@ -227,7 +232,16 @@ if ($_GET['action'] == 'check') {
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
   if ($key = isset($content['jSchema']) ? 'jSchema' : (isset($content['json-schema']) ? 'json-schema' : null)) {
-    $schema = new JsonSchema($content[$key]);
+    $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
+    $status = $metaschema->check($content[$key]);
+    if ($status->ok()) {
+      echo "ok schéma conforme au méta-schéma<br>\n";
+    }
+    else {
+      echo "KO schéma NON conforme au méta-schéma<br>\n";
+      $status->showErrors();
+    }
+    $schema = new JsonSchema($content[$key], $verbose);
     $status = $schema->check($content);
     if ($status->ok()) {
       echo "ok instance conforme au schéma<br>\n";
@@ -239,14 +253,16 @@ if ($_GET['action'] == 'check') {
     }
     $content = $content[$key];
   }
-  $schema = new JsonSchema(__DIR__.'/json-schema.schema.json');
-  $status = $schema->check($content);
-  if ($status->ok()) {
-    echo "ok schéma conforme au méta-schéma<br>\n";
-  }
   else {
-    echo "KO schéma NON conforme au méta-schéma<br>\n";
-    $status->showErrors();
+    $schema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
+    $status = $schema->check($content);
+    if ($status->ok()) {
+      echo "ok schéma conforme au méta-schéma<br>\n";
+    }
+    else {
+      echo "KO schéma NON conforme au méta-schéma<br>\n";
+      $status->showErrors();
+    }
   }
   
   die();

@@ -1,0 +1,66 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://geoapi.fr/shomgt/shomgt.yaml#/jSchema
+title: Schéma JSON du fichier shomgt.yaml
+definitions:
+  geotiffSchema:
+    title: schema des descriptions des GéoTIFF
+    type: object
+    properties:
+      title: {type: string, description: numéro et titre}
+      scaleden: {type: number, description: dénominateur de l'échelle (optionnel)}
+      edition: {type: string, description: édition de la carte (optionnel)}
+      width: {type: number, description: largeur en pixels}
+      height: {type: number, description: hauteur en pixels}
+      south: {type: number, minimum: -90, maximum: 90, description: limite Sud en degrés décimaux > -90 & < 90}
+      west: {type: number, minimum: -180, maximum: 180, description: limite West en degrés décimaux > -180 & < 180}
+      north:
+        type: number
+        minimum: -90
+        maximum: 90
+        description: limite Nord en degrés décimaux > -90 & < 90 & > south
+      east: {type: number, minimum: -180, maximum: 180, description: limite Est en degrés décimaux > -180 & < 180}
+      left: {type: number, description: nbre de pixels à couper à gauche}
+      top: {type: number, description: nbre de pixels à couper en haut}
+      right: {type: number, description: "nbre de pixels à couper à droite, si négatif width+right"}
+      bottom: {type: number, description: "nbre de pixels à couper en bas, si négatif height+bottom"}
+      partiallyDeleted:
+        type: boolean
+        description: true pour indiquer que le GéoTIFF est partiellement effacée, absent sinon
+    required: [ title, width, height, south, west, north, east, left, top, right, bottom ]
+  
+type: object
+properties:
+  name: { type: string }
+  phpDoc:
+    type: object
+    properties:
+      name: { type: string }
+      title: { type: string }
+      doc: { type: string }
+      journal: { type: string }
+    required: [ name, title, doc, journal ]
+  jSchema:
+    $ref: '/var/www/html/schema/json-schema.schema.json'
+  path: { type: string }
+  notDisplayed:
+    type: object
+    patternProperties:
+      '^\d\d\d\d/':
+        type: object
+        properties:
+          title: { type: string }
+  deleted:
+    type: object
+    patternProperties:
+      '^gt\d':
+        type: object
+        patternProperties:
+          '^\d\d\d\d/':
+            $ref: '#/definitions/geotiffSchema'
+patternProperties:
+  '^gt\d':
+    type: object
+    patternProperties:
+      '^\d\d\d\d/':
+        $ref: '#/definitions/geotiffSchema'
+#additionalProperties: false

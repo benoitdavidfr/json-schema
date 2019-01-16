@@ -102,12 +102,15 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
   echo '<pre>',Yaml::dump($def, 999),"</pre>\n";
   echo '<pre>',Yaml::dump($data, 999),"</pre>\n";
 
-  if ($status->ok() == $result)
-    echo "ok: status=",$status->ok()?'ok':'KO',", result=",$result?'ok':'KO',"<br>\n";
+  if ($status->ok() && $result)
+    echo "ok: status=ok, result=ok<br>\n";
+  elseif (!$status->ok() && !$result)
+    echo "ok: status=KO, result=KO<br>\n",
+         "<pre>",JsonSchema::json_encode($status->errors()),"</pre>\n";
   elseif (!$status->ok())
-    echo "<td><pre>",json_encode($status->errors()),"</pre></td></tr>\n";
+    echo "<pre>",JsonSchema::json_encode($status->errors()),"</pre>\n";
   else
-    echo "<td><b>Erreur non détectée $comment</b></td></tr>\n";
+    echo "<b>Erreur non détectée $comment</b>\n";
 }
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";

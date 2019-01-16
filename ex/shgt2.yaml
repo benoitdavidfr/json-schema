@@ -1,0 +1,195 @@
+name: shomgt.yaml
+phpDoc:
+  name: shomgt.yaml
+  title: paramètres des cartes GéoTIFF du Shom (V2)
+  doc: |
+    Ce fichier décrit des GéoTIFF qui correspondent soit à une carte soit à un cartouche.
+    Chaque GéoTIFF est identifié par son nom qui correspond au nom du fichier contenant l'image
+    Les GéoTIFF sont regroupés en couches:
+      - gt12k : les cartes approx. au 1/12k
+      - gt25k : les cartes approx. au 1/25k
+      - gt50k : les cartes approx. au 1/50k 
+      - gt150k : les cartes approx. au 1/150k, 1/100k et 1/175k
+      - gt250k : les cartes approx. au 1/250k
+      - gt350k, gt550k, gt1M, gt2M, gt4M, gt10M, gt20M
+    Plus 2 couches particulières: gtaem et gtMancheGrid
+    Les paramètres de chaque GéoTIFF sont décrits dans geotiffSchema
+    Lorsqu'un GéoTIFF intersecte l'antiméridien, par convention west > east, sinon west < east
+    De plus, le planisphère est géré de manière spécifique:
+      - d'une part, il correspond pour un même fichier à 2 entrées.
+      - d'autre part, les longitudes ne respectent pas l'intervalle de valeur
+    Un cache de ce fichier Yaml est stocké dans shomgt.phpser automatiquement mis à jour lors de modifications
+    de ce fichier.
+         
+  journal: |
+    14/1/2019:
+      mise à jour
+      La carte 6643 n'est pas en WGS84, le GAN non plus ! Toutes les bordures sont à corriger !
+      Les cartes 6884, 6671 et 7616 posent pbs. Les bordures semblent à revoir.
+path: ../../shomgeotiff/current/
+
+jSchema:
+  $schema: http://json-schema.org/draft-07/schema#
+  $id: http://geoapi.fr/shomgt/shomgt.yaml#/jSchema
+  title: Schéma JSON du fichier shomgt.yaml
+  definitions:
+    geotiffSchema:
+      title: schema des descriptions des GéoTIFF
+      type: object
+      properties:
+        title: {type: string, description: numéro et titre}
+        scaleden: {type: number, description: dénominateur de l'échelle (optionnel)}
+        edition: {type: string, description: édition de la carte (optionnel)}
+        width: {type: number, description: largeur en pixels}
+        height: {type: number, description: hauteur en pixels}
+        south: {type: number, minimum: -90, maximum: 90, description: limite Sud en degrés décimaux > -90 & < 90}
+        west: {type: number, minimum: -180, maximum: 180, description: limite West en degrés décimaux > -180 & < 180}
+        north:
+          type: number
+          minimum: -90
+          maximum: 90
+          description: limite Nord en degrés décimaux > -90 & < 90 & > south
+        east: {type: number, minimum: -180, maximum: 180, description: limite Est en degrés décimaux > -180 & < 180}
+        left: {type: number, description: nbre de pixels à couper à gauche}
+        top: {type: number, description: nbre de pixels à couper en haut}
+        right: {type: number, description: "nbre de pixels à couper à droite, si négatif width+right"}
+        bottom: {type: number, description: "nbre de pixels à couper en bas, si négatif height+bottom"}
+        partiallyDeleted:
+          type: boolean
+          description: true pour indiquer que le GéoTIFF est partiellement effacée, absent sinon
+      required: [ title, width, height, south, west, north, east, left, top, right, bottom ]
+    
+  type: object
+  properties:
+    name: { type: string }
+    phpDoc:
+      type: object
+      properties:
+        name: { type: string }
+        title: { type: string }
+        doc: { type: string }
+        journal: { type: string }
+      required: [ name, title, doc, journal ]
+    jSchema:
+      $ref: '/var/www/html/schema/json-schema.schema.json'
+    path: { type: string }
+    notDisplayed:
+      type: object
+      patternProperties:
+        '^\d\d\d\d/':
+          type: object
+          properties:
+            title: { type: string }
+    deleted:
+      type: object
+      patternProperties:
+        '^gt\d':
+          type: object
+          patternProperties:
+            '^\d\d\d\d/':
+              $ref: '#/definitions/geotiffSchema'
+  patternProperties:
+    '^gt\d':
+      type: object
+      patternProperties:
+        '^\d\d\d\d/':
+          $ref: '#/definitions/geotiffSchema'
+  #additionalProperties: false
+    
+gt25k:
+  6605/6605_pal300:
+    title: 6605 - Ile de Tahiti - De la Pointe Vénus à Mahaena
+    scaleden: 25096
+    width: 13819
+    height: 9922
+    south: -17.603061
+    west: -149.523381
+    north: -17.413319
+    east: -149.247967
+    left: 1107 # nbre de pixels de la bordure gauche
+    bottom: 1016 # nbre de pixels de la bordure basse
+    right: 1170 # nbre de pixels de la bordure droite
+    top: 1087 # nbre de pixels de la bordure haute
+  6740/6740_pal300:
+    title: 6740 - Ile de Tahiti - De Maraa à Faaa
+    scaleden: 25080
+    width: 9922
+    height: 13819
+    south: -17.791178
+    west: -149.696756
+    north: -17.527086
+    east: -149.498972
+    left: 1089 # nbre de pixels de la bordure gauche
+    bottom: 1127 # nbre de pixels de la bordure basse
+    right: 987 # nbre de pixels de la bordure droite
+    top: 1223 # nbre de pixels de la bordure haute
+
+notDisplayed:
+  4232/4232_pal300:
+    title: 4232 - Polynésie Française - Îles Australes
+  5825/5825_pal300:
+    title: 5825 - Ilot de Clipperton
+  5438/5438_pal300:
+    title: 5438 - Océan Pacifique
+  6207/6207_pal300:
+    title: 6207 - Polynésie Française - Iles Australes
+
+deleted:
+  gt50k:
+    6651/6651_pal300:
+      title: 6651 - De Calais à Dunkerque
+      comment: Suppression de la 6651 redondante avec la 7424
+      scaleden: 43084
+      width: 13819
+      height: 9922
+      south: 50.925333
+      west: 1.716486
+      north: 51.251069
+      east: 2.436847
+      left: 478
+      bottom: 500
+      right: 500
+      top: 620
+    7037/7037_pal300:
+      title: 7037 - De Dover à North Foreland
+      comment: Suppression de la 7037 redondante
+      scaleden: 37452
+      width: 7733
+      height: 13140
+      south: 51.085167
+      west: 1.293600
+      north: 51.460161
+      east: 1.645428
+      left: 590
+      bottom: 430
+      right: 540
+      top: 460
+  gt19M:
+    5438/5438_pal300:
+      title: 5438 - Océan Pacifique
+      comment: compliquée à utiliser car a cheval sur 180°, redondante avec le planisphère
+      scaleden: 18911009
+      width: 13819
+      height: 9922
+      south: -68.204469
+      west: 52.265547
+      north: 74.773422
+      east: -16.687519
+      left: 478
+      bottom: 500
+      right: 500
+      top: 620
+  gt12k:
+    0982/0982_2_gtw:
+      title: 0982-B - Port de Miquelon
+      scaleden: 9986
+      width: 2630
+      height: 2134
+      south: 47.094156
+      west: -56.391422
+      north: 47.110394
+      east: -56.362108
+      left: 80
+      bottom: 80
+      right: 80
+      top: 80
