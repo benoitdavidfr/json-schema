@@ -14,11 +14,15 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
+// liste des fichiers de tests utilisés
 $filetests = ['tests','testsformat','tests2'];
 //$filetests = ['tests2'];
 //$filetests = ['tests'];
 
-$verbose = false;
+// verbosités
+$eltTestVerbose = false; // verbosité de chaque test
+$testsFileverbose = false; // verbosité de la vérification que le contenu du doc des tests est conforme à son schéma
+
 $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
 
 //echo "<pre>"; print_r($_SERVER); die();
@@ -42,14 +46,18 @@ if (!isset($_GET['no'])) {
       echo "Le schéma des tests n'est pas conforme au méta-schéma json-schema draft-07<br>\n";
       $status->showErrors();
     }
+    $status->showWarnings();
     
     // vérification que le contenu du doc des tests est conforme à son schéma
-    $schema = new JsonSchema($tests['jSchema'], false);
+    $schema = new JsonSchema($tests['jSchema'], $testsFileverbose);
     $status = $schema->check($tests);
     if ($status->ok())
-      echo "ok contenu des tests conforme à leur schéma<br>\n";
-    else
+      echo "ok contenu des tests conforme à son schéma<br>\n";
+    else {
+      echo "Contenu des tests NON conforme à son schéma<br>\n";
       $status->showErrors();
+    }
+    $status->showWarnings();
 
     echo "<table border=1>";
     foreach ($tests['schemas'] as $nosch => $sch) {
@@ -58,7 +66,7 @@ if (!isset($_GET['no'])) {
         continue;
       }
       try {
-        $schema = new JsonSchema($sch['schema'], $verbose);
+        $schema = new JsonSchema($sch['schema'], $eltTestVerbose);
         foreach ($sch['tests'] as $notest => $test) {
           if (is_array($test['data']) && isset($test['data']['$ref']))
             $data = JsonSchema::jsonfile_get_contents($test['data']['$ref']);
@@ -106,11 +114,13 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
     echo "ok: status=ok, result=ok<br>\n";
   elseif (!$status->ok() && !$result)
     echo "ok: status=KO, result=KO<br>\n",
-         "<pre>",JsonSchema::json_encode($status->errors()),"</pre>\n";
+         "<pre>",JsonSchema::json_encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
   elseif (!$status->ok())
-    echo "<pre>",JsonSchema::json_encode($status->errors()),"</pre>\n";
+    echo "<pre>",JsonSchema::json_encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
   else
     echo "<b>Erreur non détectée $comment</b>\n";
+  if ($status->ok())
+    echo "<pre><b>Warnings:</b>\n",JsonSchema::json_encode($status->warnings(), JSON_PRETTY_PRINT),"</pre>\n";
 }
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";

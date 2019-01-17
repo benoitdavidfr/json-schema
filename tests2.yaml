@@ -1,18 +1,11 @@
 title: liste de tests divers
-jSchema:
-  type: object
-  properties:
-    schemas:
-      type: array
-      items:
-        type: object
-        required: [title]
-        properties:
-          title: { type: string }
-          schema:
-            $ref: http://localhost/schema/json-schema.schema.json
-          tests: { type: array }
+jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
 schemas:
+  - title: json-schema draft-07
+    schema: {$ref: http://localhost/schema/json-schema.schema.json}
+    tests:
+      - data:  {$ref: http://localhost/schema/json-schema.schema.json}
+        result: true
   - title: route500 / featureds.schema
     schema: { $ref: /var/www/html/schema/ex/featureds.schema.yaml }
     tests:
@@ -23,13 +16,3 @@ schemas:
     tests:
     - data: { $ref: http://localhost/schema/ex/shgt.yaml }
       result: true
-  - title: schéma toujours vrai
-    schema: true
-    tests:
-    - data: { xx: une chaine }
-      result: true
-  - title: schéma toujours faux
-    schema: false
-    tests:
-    - data: { xx: une chaine }
-      result: false

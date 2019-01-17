@@ -7,7 +7,10 @@ doc: |
   
   A FAiRE:
     - définir une méthode statique jSchemaCheck() pour tester un doc par rapport à son jSchema
-    - définir une méthode statique simpleCheck() pour tester un doc sans avoir à créer d'objet intermédiaire'
+    - définir une méthode statique simpleCheck() pour tester un doc sans avoir à créer d'objet intermédiaire
+    - réfléchir à une logique de registre de schéma:
+      - URI https://schema.georef.eu/
+      - définir une liste de schéma bien connus que je sais résoudre sans accès http
 journal: |
   1-14/1/2019:
     améliorations de jsonschema.inc.php et définition d'une suite de tests

@@ -1,20 +1,5 @@
 title: tests des formats
-jSchema:
-  type: object
-  properties:
-    title: {type: string}
-    source: {type: string}
-    schemas:
-      type: array
-      items:
-        type: object
-        required: [title]
-        properties:
-          title: { type: string }
-          schema:
-            $ref: http://localhost/schema/json-schema.schema.json
-          tests: { type: array }
-  additionalProperties: false
+jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
   - title: date-time - RFC 3339, section 5.6.

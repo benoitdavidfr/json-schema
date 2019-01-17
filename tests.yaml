@@ -1,27 +1,30 @@
 title: tests utilisant les exemples donnés dans la doc json-schema + draft-07 lui-même
-jSchema:
-  type: object
-  properties:
-    title: {type: string}
-    source: {type: string}
-    schemas:
-      type: array
-      items:
-        type: object
-        required: [title]
-        properties:
-          title: { type: string }
-          schema:
-            $ref: http://localhost/schema/json-schema.schema.json
-          tests: { type: array }
-  additionalProperties: false
+jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
-  - title: json-schema draft-07
-    schema: {$ref: http://localhost/schema/json-schema.schema.json}
+  - title: Hello, World! - empty object
+    schema: { }
     tests:
-      - data:  {$ref: http://localhost/schema/json-schema.schema.json}
+      - data: 42
         result: true
+      - data: "I'm a string"
+        result: true
+      - data: { "an": [ "arbitrarily", "nested" ], "data": "structure" }
+        result: true
+  - title: Hello, World! - maches anything
+    schema: true
+    tests:
+      - data: 42
+        result: true
+      - data: "I'm a string"
+        result: true
+      - data: { "an": [ "arbitrarily", "nested" ], "data": "structure" }
+        result: true
+  - title: Hello, World! - maches nothing
+    schema: false
+    tests:
+      - data: "Resistance is futile...  This will always fail!!!"
+        result: false
   - title: type keyword 
     schema: {type: number}
     tests:
@@ -31,7 +34,7 @@ schemas:
         result: true
       - data: '42.3'
         result: false
-  - title: type list
+  - title: types number | string
     schema: { type: [number, string] }
     tests:
       - data: 42
@@ -65,7 +68,7 @@ schemas:
         result: true
       - data: ABCD
         result: false
-  - title: string regexp
+  - title: string pattern
     schema:
       type: string
       pattern: '^(\([0-9]{3}\))?[0-9]{3}-[0-9]{4}$'
@@ -88,6 +91,15 @@ schemas:
       - data: 3.1415926
         result: false
       - data: '42'
+        result: false
+  - title: Numeric types - type number multipleOf
+    schema: { "type": "number", "multipleOf": 1.0 }
+    tests:
+      - data: 42
+        result: true
+      - data: 42.0
+        result: true
+      - data: 3.1415926
         result: false
   - title: Numeric types - type number
     schema: { type: number, minimum: 0, exclusiveMaximum: 100 }
@@ -145,11 +157,11 @@ schemas:
     schema:
       type: object
       properties:
-          number: {type: number}
-          street_name: {type: string}
+          number: { type: number }
+          street_name: { type: string }
           street_type: { type: string, enum: [Street, Avenue, Boulevard] }
     tests:
-      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+      - data: { number: 1600, street_name: Pennsylvania, street_type: Avenue }
         result: true
       - data: { "number": "1600", "street_name": "Pennsylvania", "street_type": "Avenue" }
         result: false
@@ -161,7 +173,7 @@ schemas:
         result: true
       - data: { }
         result: true
-  - title: additional Properties 
+  - title: additional Properties as boolean
     schema:
       type: object
       properties:
@@ -176,6 +188,21 @@ schemas:
         result: false
       - data: { }
         result: true
+  - title: additional Properties as schema
+    schema:
+      type: object
+      properties:
+          number: { type: number }
+          street_name: { type: string }
+          street_type: { type: string, enum: [Street, Avenue, Boulevard] }
+      additionalProperties: { type: string }
+    tests:
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue" }
+        result: true
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "direction": "NW" }
+        result: true
+      - data: { "number": 1600, "street_name": "Pennsylvania", "street_type": "Avenue", "office_number": 201  }
+        result: false
   - title: Required Properties 
     schema:
       type: object
@@ -250,6 +277,26 @@ schemas:
           name: John Doe
           billing_address: 555 Debtor's Lane
         result: true
+  - title: Property dependencies bidirectional
+    schema:
+      type: object
+      properties:
+          name: { type: string }
+          credit_card: { type: number }
+          billing_address: { type: string }
+      required: [ name ]
+      dependencies:
+          credit_card: [ billing_address ]
+          billing_address: [ credit_card ]
+    tests:
+      - data:
+          name: John Doe
+          credit_card: 5555555555555555
+        result: false
+      - data:
+          name: John Doe
+          billing_address: 555 Debtor's Lane
+        result: false
   - title: Schema dependencies
     schema:
       type: object
@@ -374,7 +421,7 @@ schemas:
         result: true
       - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
         result: true
-  - title: Tuple validation + additionalItems
+  - title: Tuple validation + additionalItems as boolean
     schema:
       items:
         - type: number
@@ -390,6 +437,21 @@ schemas:
       - data: [1600, "Pennsylvania", "Avenue"]
         result: true
       - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
+        result: false
+  - title: Tuple validation + additionalItems as schema
+    schema:
+      items:
+        - type: number
+        - type: string
+        - type: string
+          enum: [ Street, Avenue, Boulevard ]
+        - type: string
+          enum: [ NW, NE, SW, SE ]
+      additionalItems: { type: string }
+    tests:
+      - data: [1600, "Pennsylvania", "Avenue", "NW", "Washington"]
+        result: true
+      - data: [1600, "Pennsylvania", "Avenue", "NW", 20500]
         result: false
   - title: minItems + maxItems
     schema:
@@ -482,22 +544,6 @@ schemas:
         result: true
       - data: { "country": "Canada" }
         result: false
-  - title: Combining schemas anyOf
-    schema:
-      anyOf:
-        - type: string
-          maxLength: 5
-        - type: number
-          minimum: 0
-    tests:
-      - data: short
-        result: true
-      - data: too long
-        result: false
-      - data: 12
-        result: true
-      - data: -5
-        result: false
   - title: Combining schemas oneOf
     schema:
       oneOf:
@@ -533,6 +579,22 @@ schemas:
       - data: No way
         result: false
       - data: -1
+        result: false
+  - title: Combining schemas anyOf
+    schema:
+      anyOf:
+        - type: string
+          maxLength: 5
+        - type: number
+          minimum: 0
+    tests:
+      - data: short
+        result: true
+      - data: too long
+        result: false
+      - data: 12
+        result: true
+      - data: -5
         result: false
   - title: Combining schemas oneOf
     schema:

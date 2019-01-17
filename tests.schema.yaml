@@ -1,0 +1,29 @@
+$schema: http://json-schema.org/draft-07/schema#
+$id: http://schema.georef.eu/tests.schema.yaml
+type: object
+required: [title, schemas]
+properties:
+  title: {type: string}
+  source: {type: string}
+  jSchema: { $ref: http://localhost/schema/json-schema.schema.json }
+  schemas:
+    description: liste de schemas à tester avec chacun une liste de tests
+    type: array
+    items:
+      type: object
+      required: [title, schema]
+      properties:
+        title: { type: string }
+        schema: { $ref: http://localhost/schema/json-schema.schema.json }
+        tests:
+          description: liste des tests associés à un schéma
+          type: array
+          items:
+            description: chaque test est composée d'une instance à tester et du résultat attendu
+            type: object
+            properties:
+              data: true # l'instance à tester
+              result:
+                description: le résultat attendu
+                type: boolean
+additionalProperties: false
