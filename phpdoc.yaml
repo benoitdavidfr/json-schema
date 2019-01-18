@@ -5,13 +5,22 @@ doc: |
   https://json-schema.org/
   exemples dans ex et geojson
   
+  Mécanisme de registre de schéma:
+    J'utilise l'URI http://{name}.georef.eu/ pour identifier et localiser des schémas locaux
+    Les URI de la forme http://schema.georef.eu/{path} sont transformés en __DIR__./{path}
+    Ceux de la forme http://{name}.georef.eu/ sont transformés en __DIR__./../{name}/{path}
+    Par ailleurs, je définis un certain nombre de schémas stockés en local tels que:
+      - http://json-schema.org/schema# (Core schema meta-schema)
+      - http://json-schema.org/draft-07/schema# (idem)
+      - http://geojson.org/schema/FeatureCollection.json (schema GeoJSON)
+  
   A FAiRE:
     - définir une méthode statique jSchemaCheck() pour tester un doc par rapport à son jSchema
     - définir une méthode statique simpleCheck() pour tester un doc sans avoir à créer d'objet intermédiaire
-    - réfléchir à une logique de registre de schéma:
-      - URI https://schema.georef.eu/
-      - définir une liste de schéma bien connus que je sais résoudre sans accès http
+
 journal: |
+  18/1/2019:
+    définition ci-dessus du mécanisme de registre de schéma et mise en oeuvre dans le validateur
   1-14/1/2019:
     améliorations de jsonschema.inc.php et définition d'une suite de tests
   31/12/2018:

@@ -3,6 +3,12 @@
 name: index.php
 title: index.php - test de la classe JsonSchema
 doc: |
+  Fournit les fonctionnalités suivantes:
+    - parcours interactif des fichiers json/yaml pour valider soit s'il existe par rapport à son jSchema
+      soit sinon par rapport au méta-schéma JSON-Schema
+    - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
+    - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
+    - conversion interactive entre JSON et Yaml
 journal: |
   9/1/2019
     ajout conversion interactive JSON <-> Yaml

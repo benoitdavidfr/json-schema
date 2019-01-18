@@ -6,7 +6,7 @@ doc: |
   Par défaut lit les différents fichiers de test et exécute chaque test.
   Permet aussi dexécuter un test particulier.
 journal: |
-  11/1/2019
+  1-18/1/2019
     première version
 */
 require_once __DIR__.'/../vendor/autoload.php';
@@ -15,9 +15,10 @@ use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
 // liste des fichiers de tests utilisés
-$filetests = ['tests','testsformat','tests2'];
+$filetests = ['tests','testsformat','tests2','testpredef'];
 //$filetests = ['tests2'];
 //$filetests = ['tests'];
+//$filetests = ['testpredef'];
 
 // verbosités
 $eltTestVerbose = false; // verbosité de chaque test

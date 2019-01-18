@@ -1,0 +1,45 @@
+title: liste des schémas prédéfinis et stockés localement
+jSchema:
+  $id: http://schema.georef.eu/predef.yaml#/jSchema
+  $schema: http://json-schema.org/draft-07/schema#
+  type: object
+  properties:
+    title: { type: string }
+    jSchema: {$ref: http://json-schema.org/schema#}
+    predefs:
+      description: liste des schémas prédéfinis identifiés par leur id
+      type: object
+      additionalProperties:
+        description: définition de chaque schéma prédéfini
+        type: object
+        properties:
+          title:
+            description: titre du schéma
+            type: string
+          aliases:
+            description: autres identifiants
+            type: array
+            items:
+              type: string
+          localPath:
+            description: chemin local de stockage défini par rapport au validateur
+            type: string
+          source:
+            description: source du schéma
+            type: string
+predefs:
+  http://json-schema.org/schema#:
+    title: Core schema meta-schema
+    aliases:
+      - http://json-schema.org/draft-07/schema#
+    localPath: json-schema.schema.yaml
+    source: http://json-schema.org/draft-07/schema
+  http://geojson.org/schema/FeatureCollection.json:
+    title: GeoJSON FeatureCollection
+    localPath: geojson/featurecollection.schema.json
+    source: http://geojson.org/schema/FeatureCollection.json
+patterns:
+  ^http://schema.georef.eu:
+    localPath: ''
+  ^http://yamldoc.georef.eu:
+    localPath: /../yamldoc

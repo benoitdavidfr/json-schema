@@ -17,6 +17,8 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-07/schema# en totalité.
 journal: |
+  18/1/2019:
+    Ajout fonctionnalité d'utilisation de schémas prédéfinis
   16-17/1/2019:
     Correction d'un bug sur items
     Modif de la logique de vérification pour ne pas traiter les ensembles de types comme des anyOf()
@@ -98,11 +100,49 @@ doc: |
   de fichier utilisés dans les références vers d'autres schémas ne doivent pas être définis en relatif
 */
 class JsonSchema {
+  const SCHEMAIDS = [];
+  static $predefs=null; // dictionnaire [ {predef} => {local} ] utilisé par self::predef()
+  static $patterns=null; // dictionnaire [ {pattern} => {local} ] utilisé par self::predef()
   private $verbose; // true pour afficher des commentaires
   private $filepath; // chemin du fichier contenant le schéma éventuellement null si inconnu
   private $def; // contenu du schéma comme array Php ou boolean
   private $elt; // objet JsonSchemaElt correspondant au schéma ou null si $def est booléen
   private $status; // objet JsonSchStatus contenant le statut issu de la création du schéma
+  
+  // remplace les chemins prédéfinis par leur équivalent local
+  // utilise le fichier predef.yaml chargé dans self::$predefs
+  static private function predef(string $path): ?string {
+    //echo "predef(path=$path)<br>\n";
+    if (self::$predefs === null) {
+      if (($txt = @file_get_contents(__DIR__.'/predef.yaml')) === false)
+        throw new Exception("ouverture impossible du fichier ");
+      try {
+        $predefs = Yaml::parse($txt, Yaml::PARSE_DATETIME);
+      }
+      catch (Exception $e) {
+        throw new Exception("Décodage Yaml du fichier predef.yaml incorrect: ".$e->getMessage());
+      }
+      self::$predefs = [];
+      foreach ($predefs['predefs'] as $id => $predef) {
+        self::$predefs[$id] = $predef['localPath'];
+        if (isset($predef['aliases']))
+          foreach ($predef['aliases'] as $alias)
+            self::$predefs[$alias] = $predef['localPath'];
+      }
+      self::$patterns = $predefs['patterns'];
+    }
+    //echo (isset(self::$predefs[$path]) ? "remplacé par: ".__DIR__.'/'.self::$predefs[$path] : "absent"),"<br>\n";
+    if (isset(self::$predefs[$path]))
+      return __DIR__.'/'.self::$predefs[$path];
+    foreach (self::$patterns as $pattern => $prefix) {
+      if (preg_match("!$pattern!", $path)) {
+        $path2 = preg_replace("!$pattern!", $prefix['localPath'], $path, 1);
+        //echo "remplacé par: ".__DIR__.$path2,"<br>\n";
+        return __DIR__.$path2;
+      }
+    }
+    return null;
+  }
   
   /*PhpDoc: methods
   name: __construct
@@ -119,10 +159,12 @@ class JsonSchema {
       echo "JsonSchema::_construct(def=",json_encode($def),", parent",$parent?'<>':'=',"null)<br>\n";
     $this->status = new JsonSchStatus;
     if (is_string($def)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
+      if ($path = self::predef($def)) // remplacement des chemins prédéfinis par leur équivalent local
+        $def = $path;
       if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
         throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
-      $filepath = $matches[1];
-      $eltpath = isset($matches[4]) ? $matches[4] : '';
+      $filepath = $matches[1]; // partie avant #
+      $eltpath = isset($matches[4]) ? $matches[4] : ''; // partie après #
       $this->filepath = $filepath;
       //echo "filepath=$filepath, eltpath=$eltpath<br>\n";
       if ((substr($filepath, 0, 7)=='http://') || (substr($filepath, 0, 1)=='/')) { // si chemin défini en absolu
@@ -199,8 +241,6 @@ class JsonSchema {
     //echo "jsonfile_get_contents(path=$path)<br>\n";
     if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
-    if (isset($_SERVER['SERVER_NAME']) && ($_SERVER['SERVER_NAME']<>'localhost'))
-      $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
     if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
       try {
         return Yaml::parse($txt, Yaml::PARSE_DATETIME);
@@ -384,7 +424,7 @@ class JsonSchemaElt {
   
   // vérification que l'instance correspond à l'élément de schema
   // $id est utilisé pour afficher les erreurs, $status est le statut en entrée, le retour est le statut modifié
-  function check($instance, string $id, JsonSchStatus $status): JsonSchStatus {
+  function checkC($instance, string $id, JsonSchStatus $status): JsonSchStatus {
     if (!$this->verbose)
       return $this->checkI($instance, $id, $status);
     $s = new JsonSchStatus;
@@ -396,7 +436,7 @@ class JsonSchemaElt {
     $status->append($s);
     return $status;
   }
-  function checkI($instance, string $id, JsonSchStatus $status): JsonSchStatus {
+  function check($instance, string $id, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
       echo "check(instance=",json_encode($instance),", id=$id)@def=$this<br><br>\n";
     if (is_bool($this->def))

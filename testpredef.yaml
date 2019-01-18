@@ -1,0 +1,18 @@
+title: test de la fonctionnalité de remplacement par des path prédéfinis
+jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
+schemas:
+  - title: json-schema draft-07
+    schema: {$ref: http://json-schema.org/schema# }
+    tests:
+      - data:  {$ref: http://localhost/schema/json-schema.schema.json}
+        result: true
+  - title: route500 / featureds.schema
+    schema: { $ref: http://schema.georef.eu/ex/featureds.schema.yaml }
+    tests:
+    - data: { $ref: /var/www/html/schema/ex/route500.yaml }
+      result: true
+  - title: shomgt
+    schema: { $ref: http://schema.georef.eu/ex/shgt.schema.yaml }
+    tests:
+    - data: { $ref: /var/www/html/schema/ex/shgt.yaml }
+      result: true
