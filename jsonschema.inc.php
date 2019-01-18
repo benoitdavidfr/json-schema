@@ -100,7 +100,11 @@ doc: |
   de fichier utilisés dans les références vers d'autres schémas ne doivent pas être définis en relatif
 */
 class JsonSchema {
-  const SCHEMAIDS = [];
+  const SCHEMAIDS = [ // liste des id de schéma acceptés
+    'http://json-schema.org/schema#',
+    'http://json-schema.org/draft-06/schema#',
+    'http://json-schema.org/draft-07/schema#',
+  ];
   static $predefs=null; // dictionnaire [ {predef} => {local} ] utilisé par self::predef()
   static $patterns=null; // dictionnaire [ {pattern} => {local} ] utilisé par self::predef()
   private $verbose; // true pour afficher des commentaires
@@ -199,10 +203,7 @@ class JsonSchema {
     $this->def = $def;
     
     if (!isset($def['$ref']) &&
-        (!isset($def['$schema']) || !in_array($def['$schema'], [
-              'http://json-schema.org/schema#',
-              'http://json-schema.org/draft-06/schema#',
-              'http://json-schema.org/draft-07/schema#'])))
+        (!isset($def['$schema']) || !in_array($def['$schema'], self::SCHEMAIDS)))
       $this->status->setWarning("Attention le schema ne comporte aucun des id. json-schema.org, draft-06 ou draft-07");
     if (isset($def['definitions'])) {
       foreach (array_keys($def['definitions']) as $defid)
