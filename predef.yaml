@@ -1,10 +1,12 @@
 title: liste des schémas prédéfinis et stockés localement
+modified: '2019-01-18'
 jSchema:
   $id: http://schema.georef.eu/predef.yaml#/jSchema
   $schema: http://json-schema.org/draft-07/schema#
   type: object
   properties:
     title: { type: string }
+    modified: { type: string, format: date }
     jSchema: {$ref: http://json-schema.org/schema#}
     predefs:
       description: liste des schémas prédéfinis identifiés par leur id
@@ -12,6 +14,7 @@ jSchema:
       additionalProperties:
         description: définition de chaque schéma prédéfini
         type: object
+        additionalProperties: false
         properties:
           title:
             description: titre du schéma
@@ -26,6 +29,17 @@ jSchema:
             type: string
           source:
             description: source du schéma
+            type: string
+    patterns:
+      description: liste de motifs/remplacements dans des url de schéma identifiés par le motif
+      type: object
+      additionalProperties:
+        description: définition de chaque motif/remplacement
+        type: object
+        additionalProperties: false
+        properties:
+          localPath:
+            description: chemin local de stockage défini par rapport au validateur
             type: string
 predefs:
   http://json-schema.org/schema#:

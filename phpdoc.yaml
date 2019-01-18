@@ -21,6 +21,7 @@ doc: |
 journal: |
   18/1/2019:
     définition ci-dessus du mécanisme de registre de schéma et mise en oeuvre dans le validateur
+    publication sur Github
   1-14/1/2019:
     améliorations de jsonschema.inc.php et définition d'une suite de tests
   31/12/2018:
@@ -32,6 +33,8 @@ phpIncludes:
   - /schema/jsonschema.inc.php
 htmlFiles:
   - /schema/json-schema.schema.yaml
+  - /schema/predef.yaml
   - /schema/tests.yaml
   - /schema/testsformat.yaml
   - /schema/tests2.yaml
+  - /schema/testspredef.yaml

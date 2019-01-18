@@ -100,7 +100,7 @@ doc: |
   de fichier utilisés dans les références vers d'autres schémas ne doivent pas être définis en relatif
 */
 class JsonSchema {
-  const SCHEMAIDS = [ // liste des id de schéma acceptés
+  const SCHEMAIDS = [ // liste des id acceptés pour le champ $schema
     'http://json-schema.org/schema#',
     'http://json-schema.org/draft-06/schema#',
     'http://json-schema.org/draft-07/schema#',
@@ -114,8 +114,8 @@ class JsonSchema {
   private $status; // objet JsonSchStatus contenant le statut issu de la création du schéma
   
   // remplace les chemins prédéfinis par leur équivalent local
-  // utilise le fichier predef.yaml chargé dans self::$predefs
-  static private function predef(string $path): ?string {
+  // utilise le fichier predef.yaml chargé dans self::$predefs et self::$patterns
+  static function predef(string $path): ?string {
     //echo "predef(path=$path)<br>\n";
     if (self::$predefs === null) {
       if (($txt = @file_get_contents(__DIR__.'/predef.yaml')) === false)
@@ -146,6 +146,34 @@ class JsonSchema {
       }
     }
     return null;
+  }
+  
+  // récupère le contenu d'un fichier JSON ou Yaml, renvoie une exception en cas d'erreur
+  static function jsonfile_get_contents(string $path): array {
+    //echo "jsonfile_get_contents(path=$path)<br>\n";
+    if (($txt = @file_get_contents($path)) === false)
+      throw new Exception("ouverture impossible du fichier $path");
+    if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
+      try {
+        return Yaml::parse($txt, Yaml::PARSE_DATETIME);
+      }
+      catch (Exception $e) {
+        throw new Exception("Décodage Yaml du fichier $path incorrect: ".$e->getMessage());
+      }
+    }
+    elseif (substr($path, -5)=='.json') {
+      if (($doc = json_decode($txt, true)) === null)
+        throw new Exception("Décodage JSON du fichier $path incorrect: ".json_last_error_msg());
+      return $doc;
+    }
+    else
+      throw new Exception("Extension du fichier $path incorrecte");
+  }
+  
+  // affiche le JSON d'une valeur avec par défaut les options JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE
+  static function json_encode($val, int $options=0): string {
+    $options |= JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE;
+    return json_encode($val, $options);
   }
   
   /*PhpDoc: methods
@@ -235,34 +263,6 @@ class JsonSchema {
     $result = self::subElement($content, $path);
     echo "returns: ",json_encode($result),"<br>\n";
     return $result;
-  }
-  
-  // récupère le contenu d'un fichier JSON ou Yaml, renvoie une exception en cas d'erreur
-  static function jsonfile_get_contents(string $path): array {
-    //echo "jsonfile_get_contents(path=$path)<br>\n";
-    if (($txt = @file_get_contents($path)) === false)
-      throw new Exception("ouverture impossible du fichier $path");
-    if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
-      try {
-        return Yaml::parse($txt, Yaml::PARSE_DATETIME);
-      }
-      catch (Exception $e) {
-        throw new Exception("Décodage Yaml du fichier $path incorrect: ".$e->getMessage());
-      }
-    }
-    elseif (substr($path, -5)=='.json') {
-      if (($doc = json_decode($txt, true)) === null)
-        throw new Exception("Décodage JSON du fichier $path incorrect: ".json_last_error_msg());
-      return $doc;
-    }
-    else
-      throw new Exception("Extension du fichier $path incorrecte");
-  }
-  
-  // affiche le JSON d'une valeur avec par défaut les options JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE
-  static function json_encode($val, int $options=0): string {
-    $options |= JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE;
-    return json_encode($val, $options);
   }
   
   // lance une exception si détecte une boucle dans les définitions ou une référence à une définition inexistante
@@ -809,6 +809,7 @@ class JsonSchemaElt {
   private function checkStringFormat(string $id, string $string, JsonSchStatus $status): JsonSchStatus {
     $knownFormats = [
       'date-time'=> '^\d\d\d\d-\d\d-\d\dT\d\d:\d\d(:\d\d(\.\d+)?)?(([-+]\d\d:\d\d)|Z)$', // RFC 3339, section 5.6.
+      'date'=> '^\d\d\d\d-\d\d-\d\d$',
       'email'=> '^[-a-zA-Z0-9_\.]+@[-a-zA-Z0-9_\.]+$', // A vérifier - email address, see RFC 5322, section 3.4.1.
       'hostname'=> '^[-a-zA-Z0-9\.]+$', // Internet host name, see RFC 1034, section 3.1.
       'ipv4'=> '^\d+\.\d+\.\d+\.\d+(/\d+)?$', // IPv4 address, as defined in RFC 2673, section 3.2.
