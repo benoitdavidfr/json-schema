@@ -239,7 +239,10 @@ if ($_GET['action'] == 'check') {
 
   $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
   if (isset($content['jSchema'])) {
-    $status = $metaschema->check($content['jSchema']);
+    $jSchema = (is_string($content['jSchema'])) ?
+      JsonSch::file_get_contents(JsonSch::predef($content['jSchema']))
+       : $content['jSchema'];
+    $status = $metaschema->check($jSchema);
     if ($status->ok())
       echo "ok schéma conforme au méta-schéma<br>\n";
     else

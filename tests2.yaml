@@ -1,18 +1,33 @@
 title: liste de tests divers
-jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
+jSchema: http://schema.georef.eu/tests.schema.yaml
 schemas:
-  - title: json-schema draft-07
+  - title: json-schema draft-07 en localhost
     schema: {$ref: http://localhost/schema/json-schema.schema.json}
     tests:
       - data:  {$ref: http://localhost/schema/json-schema.schema.json}
         result: true
-  - title: route500 / featureds.schema
+  - title: route500 / featureds.schema en chemin Unix
     schema: { $ref: /var/www/html/schema/ex/featureds.schema.yaml }
     tests:
     - data: { $ref: /var/www/html/schema/ex/route500.yaml }
       result: true
-  - title: shomgt
+  - title: shomgt en localhost
     schema: { $ref: http://localhost/schema/ex/shgt.schema.yaml }
     tests:
     - data: { $ref: http://localhost/schema/ex/shgt.yaml }
+      result: true
+  - title: json-schema draft-07 utilisant predef
+    schema: { $ref: http://json-schema.org/schema# }
+    tests:
+      - data:  { $ref: http://json-schema.org/schema# }
+        result: true
+  - title: route500 / featureds.schema utilisant schema.georef.eu
+    schema: { $ref: http://schema.georef.eu/ex/featureds.schema.yaml }
+    tests:
+    - data: { $ref: http://schema.georef.eu/ex/route500.yaml }
+      result: true
+  - title: shomgt utilisant schema.georef.eu
+    schema: { $ref: http://schema.georef.eu/ex/shgt.schema.yaml }
+    tests:
+    - data: { $ref: http://schema.georef.eu/ex/shgt.yaml }
       result: true

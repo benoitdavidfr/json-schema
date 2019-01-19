@@ -41,10 +41,10 @@ jSchema:  {
         "type": "string"
       },
       "geox": {
-        "$ref": "http://localhost/schema/ex/geo.yaml#/jSchema"
+        "$ref": "http://schema.georef.eu/ex/geo.yaml#/jSchema"
       }
       "geoy": {
-        "$ref": "http://localhost/schema/ex/geo.schema.json"
+        "$ref": "http://schema.georef.eu/ex/geo.schema.json"
       }
     }
   }

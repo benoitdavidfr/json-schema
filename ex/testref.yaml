@@ -1,7 +1,5 @@
 # Test testref pour tester les différents types de reférence à un schéma
-json-schema:
-  $schema: http://json-schema.org/draft-07/schema#
-  $ref: http://localhost/schema/ex/testref.schema.yaml
+jSchema: http://localhost/schema/ex/testref.schema.yaml
 styleIntern:
   color: blue
 styleRelFile:

@@ -101,6 +101,7 @@ class JsonSch {
   
   // remplace les chemins prédéfinis par leur équivalent local
   // utilise le fichier predef.yaml chargé dans self::$predefs et self::$patterns
+  // si aucun remplacement, renvoie le path initial
   static function predef(string $path): ?string {
     //echo "predef(path=$path)<br>\n";
     if (self::$predefs === null) {
@@ -131,7 +132,7 @@ class JsonSch {
         return __DIR__.$path2;
       }
     }
-    return null;
+    return $path;
   }
   
   // remplacement d'un objet { '$ref'=> {path} } pour fournir le contenu référencé ou une exception
@@ -140,9 +141,7 @@ class JsonSch {
   static function deref($def) {
     if (!is_array($def) || !isset($def['$ref']))
       return $def;
-    $path = $def['$ref'];
-    if ($path2 = self::predef($path))
-      $path = $path2;
+    $path = self::predef($def['$ref']);
     //echo "path après predef: $path<br>\n";
     if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)(#(.*))?$!', $path, $matches))
       throw new Exception("Chemin $path non compris dans JsonSch::deref()");
@@ -254,8 +253,7 @@ class JsonSchema {
       echo "JsonSchema::_construct(def=",json_encode($def),", parent",$parent?'<>':'=',"null)<br>\n";
     $this->status = new JsonSchStatus;
     if (is_string($def)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
-      if ($path = JsonSch::predef($def)) // remplacement des chemins prédéfinis par leur équivalent local
-        $def = $path;
+      $def = JsonSch::predef($def); // remplacement des chemins prédéfinis par leur équivalent local
       if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
         throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
       $filepath = $matches[1]; // partie avant #

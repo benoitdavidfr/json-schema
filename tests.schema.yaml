@@ -5,7 +5,7 @@ required: [title, schemas]
 properties:
   title: {type: string}
   source: {type: string}
-  jSchema: { $ref: http://localhost/schema/json-schema.schema.json }
+  jSchema: {type: string}
   schemas:
     description: liste de schemas à tester avec chacun une liste de tests
     type: array
@@ -14,7 +14,8 @@ properties:
       required: [title, schema]
       properties:
         title: { type: string }
-        schema: { $ref: http://localhost/schema/json-schema.schema.json }
+        description: { type: string }
+        schema: { $ref: http://json-schema.org/schema# }
         tests:
           description: liste des tests associés à un schéma
           type: array

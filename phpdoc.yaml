@@ -34,8 +34,8 @@ phpIncludes:
   - /schema/jsonschelt.inc.php
 htmlFiles:
   - /schema/json-schema.schema.yaml
+  - /schema/tests.schema.yaml
   - /schema/predef.yaml
   - /schema/tests.yaml
   - /schema/testsformat.yaml
   - /schema/tests2.yaml
-  - /schema/testspredef.yaml

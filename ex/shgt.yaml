@@ -28,7 +28,7 @@ phpDoc:
       Les cartes 6884, 6671 et 7616 posent pbs. Les bordures semblent à revoir.
 path: ../../shomgeotiff/current/
 
-jSchema: { '$ref': http://localhost/schema/ex/shgt.schema.yaml }
+jSchema: http://schema.georef.eu/ex/shgt.schema.yaml
     
 gt12k:
   3127/3127_pal300:

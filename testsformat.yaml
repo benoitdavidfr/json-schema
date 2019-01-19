@@ -1,5 +1,5 @@
 title: tests des formats
-jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
+jSchema: http://schema.georef.eu/tests.schema.yaml
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
   - title: date-time - RFC 3339, section 5.6.

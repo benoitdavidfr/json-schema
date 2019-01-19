@@ -1,5 +1,5 @@
-title: tests utilisant les exemples donnés dans la doc json-schema + draft-07 lui-même
-jSchema: { $ref: http://localhost/schema/tests.schema.yaml }
+title: tests utilisant les exemples donnés dans la doc json-schema
+jSchema: http://schema.georef.eu/tests.schema.yaml
 source: https://json-schema.org/understanding-json-schema/reference/index.html
 schemas:
   - title: Hello, World! - empty object

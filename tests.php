@@ -15,16 +15,13 @@ use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
 // liste des fichiers de tests utilisés
-$filetests = ['tests','testsformat','tests2','testspredef'];
+$filetests = ['tests','testsformat','tests2'];
 //$filetests = ['tests2'];
 //$filetests = ['tests'];
-//$filetests = ['testspredef'];
 
 // verbosités
 $eltTestVerbose = false; // verbosité de chaque test
 $testsFileverbose = false; // verbosité de la vérification que le contenu du doc des tests est conforme à son schéma
-
-$metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
 
 //echo "<pre>"; print_r($_SERVER); die();
 
@@ -32,22 +29,20 @@ $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
 if (!isset($_GET['no'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests</title></head><body>\n";
   echo "<h2>Tests de recette</h2>\n";
+  
+  // vérification que le schéma des docs des tests est conforme au méta-schéma
+  $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
+  $schema = JsonSch::file_get_contents(__DIR__.'/tests.schema.yaml');
+  $status = $metaSchema->check($schema);
+  if ($status->ok())
+    $status->showWarnings("ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n");
+  else
+    $status->showErrors("Le schéma des tests n'est pas conforme au méta-schéma json-schema draft-07<br>\n");
+
   foreach($filetests as $file) {
     $txt = file_get_contents(__DIR__."/$file.yaml");
-    if ($_SERVER['SERVER_NAME']<>'localhost')
-      $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
     $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);
     echo "<h2>$tests[title]</h2>\n";
-
-    // vérification que le schéma du doc des tests est conforme au méta-schéma
-    $status = $metaSchema->check($tests['jSchema']);
-    if ($status->ok())
-      echo "ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n";
-    else {
-      echo "Le schéma des tests n'est pas conforme au méta-schéma json-schema draft-07<br>\n";
-      $status->showErrors();
-    }
-    $status->showWarnings();
     
     // vérification que le contenu du doc des tests est conforme à son schéma
     $schema = new JsonSchema($tests['jSchema'], $testsFileverbose);
@@ -122,8 +117,6 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";
 // exécution d'un test particulier
 $txt = file_get_contents(__DIR__."/$_GET[file].yaml");
-if ($_SERVER['SERVER_NAME']<>'localhost')
-  $txt = str_replace('http://localhost', "http://$_SERVER[SERVER_NAME]", $txt);
 $tests = Yaml::parse($txt, Yaml::PARSE_DATETIME);
 if (strpos($_GET['no'], '.') === false) {
   $nosch = $_GET['no'];

@@ -1,5 +1,5 @@
 $schema: http://json-schema.org/draft-07/schema#
-$id: http://geoapi.fr/shomgt/shomgt.yaml#/jSchema
+$id: http://schema.georef.eu/ex/shgt.schema.yaml
 title: Schéma JSON du fichier shomgt.yaml
 definitions:
   geotiffSchema:
@@ -39,8 +39,7 @@ properties:
       doc: { type: string }
       journal: { type: string }
     required: [ name, title, doc, journal ]
-  jSchema:
-    $ref: '/var/www/html/schema/json-schema.schema.json'
+  jSchema: { type: string }
   path: { type: string }
   notDisplayed:
     type: object
