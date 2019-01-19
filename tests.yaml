@@ -348,7 +348,6 @@ schemas:
         result: false
       - data: { "keyword": "value" }
         result: false
-        comment: additionalProperties not implemented
   - title: Pattern Properties + additional Properties
     schema:
       type: object

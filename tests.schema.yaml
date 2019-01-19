@@ -21,6 +21,7 @@ properties:
           items:
             description: chaque test est composée d'une instance à tester et du résultat attendu
             type: object
+            required: [data, result]
             properties:
               data: true # l'instance à tester
               result:

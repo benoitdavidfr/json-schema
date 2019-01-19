@@ -15,10 +15,10 @@ use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
 // liste des fichiers de tests utilisés
-$filetests = ['tests','testsformat','tests2','testpredef'];
+$filetests = ['tests','testsformat','tests2','testspredef'];
 //$filetests = ['tests2'];
 //$filetests = ['tests'];
-//$filetests = ['testpredef'];
+//$filetests = ['testspredef'];
 
 // verbosités
 $eltTestVerbose = false; // verbosité de chaque test
@@ -69,19 +69,15 @@ if (!isset($_GET['no'])) {
       try {
         $schema = new JsonSchema($sch['schema'], $eltTestVerbose);
         foreach ($sch['tests'] as $notest => $test) {
-          if (is_array($test['data']) && isset($test['data']['$ref']))
-            $data = JsonSchema::jsonfile_get_contents($test['data']['$ref']);
-          else
-            $data = $test['data'];
-          $status = $schema->check($data, true);
+          $status = $schema->check(JsonSch::deref($test['data']), true);
           $no = "$nosch.$notest";
           echo "<tr><td><a href='?file=$file&amp;no=$no'>$sch[title]</a></td><td>",
-               json_encode($test['data']),"</td>";
+               JsonSch::encode($test['data']),"</td>";
   
           if ($status->ok() == $test['result'])
             echo "<td>ok</td></tr>\n";
           elseif (!$status->ok())
-            echo "<td><pre>",json_encode($status->errors()),"</pre></td></tr>\n";
+            echo "<td><pre>",JsonSch::encode($status->errors()),"</pre></td></tr>\n";
           else
             echo "<td><b>Erreur non détectée",isset($test['comment']) ? ", $test[comment]": '',"</b></td></tr>\n";
         }
@@ -102,9 +98,8 @@ if (!isset($_GET['no'])) {
 // réalise un test et affiche le résultat
 function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool $result, string $comment) {
   if (is_array($data) && isset($data['$ref'])) {
-    echo "lecture du fichier ",$data['$ref'],"<br>";
-    $data = JsonSchema::jsonfile_get_contents($data['$ref']);
-    var_dump($data);
+    echo "deref du fichier ",$data['$ref'],"<br>";
+    $data = JsonSch::deref($data);
   }
   $status = $schema->check($data);
   echo "<h3>$title</h3>\n";
@@ -115,13 +110,13 @@ function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool 
     echo "ok: status=ok, result=ok<br>\n";
   elseif (!$status->ok() && !$result)
     echo "ok: status=KO, result=KO<br>\n",
-         "<pre>",JsonSchema::json_encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
+         "<pre>",JsonSch::encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
   elseif (!$status->ok())
-    echo "<pre>",JsonSchema::json_encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
+    echo "<pre>",JsonSch::encode($status->errors(), JSON_PRETTY_PRINT),"</pre>\n";
   else
     echo "<b>Erreur non détectée $comment</b>\n";
   if ($status->ok())
-    echo "<pre><b>Warnings:</b>\n",JsonSchema::json_encode($status->warnings(), JSON_PRETTY_PRINT),"</pre>\n";
+    echo "<pre><b>Warnings:</b>\n",JsonSch::encode($status->warnings(), JSON_PRETTY_PRINT),"</pre>\n";
 }
 
 echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>tests $_GET[file] $_GET[no]</title></head><body>\n";

@@ -31,6 +31,7 @@ phpScripts:
   - /schema/tests.php
 phpIncludes:
   - /schema/jsonschema.inc.php
+  - /schema/jsonschelt.inc.php
 htmlFiles:
   - /schema/json-schema.schema.yaml
   - /schema/predef.yaml

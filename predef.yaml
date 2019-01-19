@@ -1,12 +1,19 @@
-title: liste des schémas prédéfinis et stockés localement
+title: listes des schémas prédéfinis et des motifs pour les schémas
+abstract: |
+  Ce document défini d'une part la liste des schémas prédéfinis et stockés localement
+  et d'autre part la liste des motifs d'URI de schéma remplacés par le validateur dans un pointeur JSON d'un schéma
+  par un chemin local.
+  Ces remplacements sont effectués par la méthode statique JsonSchPointer::predef(string): string
+  qui peut être utilisée en dehors du contexte d'un schéma.
 modified: '2019-01-18'
 jSchema:
   $id: http://schema.georef.eu/predef.yaml#/jSchema
   $schema: http://json-schema.org/draft-07/schema#
   type: object
   properties:
-    title: { type: string }
-    modified: { type: string, format: date }
+    title: { type: string, identifier: http://purl.org/dc/elements/1.1/title }
+    abstract: { type: string, identifier: http://purl.org/dc/elements/1.1/abstract }
+    modified: { type: string, format: date, identifier: http://purl.org/dc/terms/modified  }
     jSchema: {$ref: http://json-schema.org/schema#}
     predefs:
       description: liste des schémas prédéfinis identifiés par leur id

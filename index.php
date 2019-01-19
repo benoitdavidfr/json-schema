@@ -70,7 +70,7 @@ if (0) {
   die("FIN ligne ".__LINE__);
 }
 if (0) {
-  $doc = JsonSchema::jsonfile_get_contents(__DIR__.'/json-schema.schema.json');
+  $doc = JsonSch::file_get_contents(__DIR__.'/json-schema.schema.json');
   var_dump($doc);
   die("FIN ligne ".__LINE__);
 }
@@ -229,46 +229,34 @@ if ($_GET['action'] == 'check') {
   else
     echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]&amp;verbose=true'>verbose</a><br>\n";
   if (is_file(__DIR__."/$_GET[file].yaml"))
-    $content = JsonSchema::jsonfile_get_contents(__DIR__."/$_GET[file].yaml");
+    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file].yaml");
   elseif (is_file(__DIR__."/$_GET[file].json"))
-    $content = JsonSchema::jsonfile_get_contents(__DIR__."/$_GET[file].json");
+    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file].json");
   else
     die("$_GET[file] ni json ni yaml");
 
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
-  if ($key = isset($content['jSchema']) ? 'jSchema' : (isset($content['json-schema']) ? 'json-schema' : null)) {
-    $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
-    $status = $metaschema->check($content[$key]);
-    if ($status->ok()) {
+  $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
+  if (isset($content['jSchema'])) {
+    $status = $metaschema->check($content['jSchema']);
+    if ($status->ok())
       echo "ok schéma conforme au méta-schéma<br>\n";
-    }
-    else {
-      echo "KO schéma NON conforme au méta-schéma<br>\n";
-      $status->showErrors();
-    }
-    $schema = new JsonSchema($content[$key], $verbose);
+    else
+      $status->showErrors("KO schéma NON conforme au méta-schéma<br>\n");
+    $schema = new JsonSchema($content['jSchema'], $verbose);
     $status = $schema->check($content);
-    if ($status->ok()) {
-      echo "ok instance conforme au schéma<br>\n";
-      $status->showWarnings();
-    }
-    else {
-      echo "KO instance non conforme au schéma<br>\n";
-      $status->showErrors();
-    }
-    $content = $content[$key];
+    if ($status->ok())
+      $status->showWarnings("ok instance conforme au schéma<br>\n");
+    else
+      $status->showErrors("KO instance non conforme au schéma<br>\n");
   }
   else {
-    $schema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
-    $status = $schema->check($content);
-    if ($status->ok()) {
+    $status = $metaschema->check($content);
+    if ($status->ok())
       echo "ok schéma conforme au méta-schéma<br>\n";
-    }
-    else {
-      echo "KO schéma NON conforme au méta-schéma<br>\n";
-      $status->showErrors();
-    }
+    else
+      $status->showErrors("KO schéma NON conforme au méta-schéma<br>\n");
   }
   
   die();
