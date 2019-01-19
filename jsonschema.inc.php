@@ -21,6 +21,8 @@ journal: |
     scission du fichier jsonschema.inc.php en jsonschema.inc.php et jsonschelt.inc.php
     ajout de JsonSch::deref() pour déréférencer un pointeur JSON
     permet d'utiliser les URL http://{name}.georef.eu/ pour des docs autres que des schémas
+    ajout de la possibilité de définir des options d'affichage dans JsonSchema::check()
+    ajout de JsonSchema::autoCheck() pour vérifier qu'une instance est conforme au schéma défini par le champ jSchema
   18/1/2019:
     Ajout fonctionnalité d'utilisation de schémas prédéfinis
   16-17/1/2019:
@@ -331,23 +333,79 @@ class JsonSchema {
   
   /*PhpDoc: methods
   name: check
-  title: "check($instance, string $id='', JsonSchStatus $status=null): JsonSchStatus - validation de conformité d'une instance à JsonSchema, renvoit un JsonSchStatus"
+  title: "check($instance, array $options=[], string $id='', JsonSchStatus $status=null): JsonSchStatus - validation de conformité d'une instance au JsonSchema, renvoit un JsonSchStatus"
   doc: |
     Un check() prend un statut initial et le modifie pour le renvoyer à la fin
-    le premier paramètre est l'instance à valider comme valeur Php
-    le second paramètre indique éventuellement un identificateur utilisé dans les erreurs
-    le troisième paramètre fournit éventuellement un statut en entrée et n'est utilisé qu'en interne à la classe
+     - le premier paramètre est l'instance à valider comme valeur Php
+     - le second paramètre indique éventuellement l'affichage à effectuer en fonction du résultat de la validation
+       c'est un array qui peut comprendre les champs suivants:
+        - showOk : chaine à afficher si ok
+        - showWarnings : chaine à afficher si ok avec les Warnings
+        - showKo : chaine à afficher si KO
+        - showErrors : chaine à afficher si KO avec les erreurs
+     - le troisième paramètre indique éventuellement un identificateur utilisé dans les erreurs
+     - le quatrième paramètre fournit éventuellement un statut en entrée et n'est utilisé qu'en interne à la classe
   */
-  function check($instance, string $id='', ?JsonSchStatus $status=null): JsonSchStatus {
+  function check($instance, array $options=[], string $id='', ?JsonSchStatus $status=null): JsonSchStatus {
     // au check initial, je clone le statut initial du schéma car je ne veux pas partager le statut entre check
     if (!$status)
       $status = clone $this->status;
     else
       $status->append($this->status);
     // cas particuliers des schémas booléens
-    if (is_bool($this->def))
-      return $this->def ? $status : $status->setError("Schema faux pour $id");
-    return $this->elt->check($instance, $id, $status);
+    if (is_bool($this->def)) {
+      if (!$this->def)
+        $status->setError("Schema faux pour $id");
+    }
+    else
+      $status = $this->elt->check($instance, $id, $status);
+    // affichage éventuel du résultat en fonction des options
+    if ($status->ok()) {
+      if (isset($options['showOk']))
+        echo $options['showOk'];
+      if (isset($options['showWarnings']))
+        $status->showWarnings($options['showWarnings']);
+    }
+    else {
+      if (isset($options['showKo']))
+        echo $options['showKo'];
+      if (isset($options['showErrors']))
+        $status->showErrors($options['showErrors']);
+    }
+    return $status;
+  }
+  
+  /*PhpDoc: methods
+  name: check
+  title: "autoCheck($instance, array $options=[]): ?JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ jSchema"
+  doc: |
+    autoCheck() valide la conformité d'une instance à son schéma défini par le champ jSchema
+    autoCheck() prend un ou 2 paramètres
+     - le premier paramètre est soit l'instance à valider comme valeur Php, soit le chemin du fichier la contenant
+     - le second paramètre indique éventuellement l'affichage à effectuer en fonction du résultat de la validation
+       c'est un array qui peut comprendre les champs suivants:
+        - showOk : chaine à afficher si ok
+        - showWarnings : chaine à afficher si ok avec les Warnings
+        - showKo : chaine à afficher si KO
+        - showErrors : chaine à afficher si KO avec les erreurs
+        - verbose : défini et vrai pour un appel verbeux, non défini ou faux pour un appel non verbeux
+    autoCheck() renvoit un JsonSchStatus ou null si le schema n'est pas défini
+  */
+  static function autoCheck($instance, array $options=[]): ?JsonSchStatus {
+    if (is_string($instance)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
+      $instance = JsonSch::predef($instance); // remplacement des chemins prédéfinis par leur équivalent local
+      if (!preg_match('!^([^#]+)(#(.*))?$!', $instance, $matches))
+        throw new Exception("Chemin $instance non compris dans JsonSchema::autoCheck()");
+      $filepath = $matches[1]; // partie avant #
+      $eltpath = isset($matches[3]) ? $matches[3] : ''; // partie après #
+      //echo "filepath=$filepath, eltpath=$eltpath<br>\n";
+      $def = JsonSch::file_get_contents($filepath);
+      $instance = $eltpath ? JsonSch::subElement($def, $eltpath) : $def; // la définition de l'élément
+    }
+    if (!isset($instance['jSchema']))
+      return null;
+    $schema = new JsonSchema($instance['jSchema'], isset($options['verbose']) && $options['verbose']);
+    return $schema->check($instance, $options);
   }
 };
 
@@ -422,8 +480,8 @@ if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de 
       $schema = new JsonSchema($schemaDef);
       $status = $schema->check('Test');
       if ($status->ok()) {
-        $status->showWarnings();
         echo "ok<br>\n";
+        $status->showWarnings();
       }
       else
         $status->showErrors();

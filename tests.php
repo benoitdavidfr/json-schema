@@ -33,11 +33,10 @@ if (!isset($_GET['no'])) {
   // vérification que le schéma des docs des tests est conforme au méta-schéma
   $metaSchema = new JsonSchema(__DIR__.'/json-schema.schema.json');
   $schema = JsonSch::file_get_contents(__DIR__.'/tests.schema.yaml');
-  $status = $metaSchema->check($schema);
-  if ($status->ok())
-    $status->showWarnings("ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n");
-  else
-    $status->showErrors("Le schéma des tests n'est pas conforme au méta-schéma json-schema draft-07<br>\n");
+  $metaSchema->check($schema, [
+    'showWarnings'=> "ok schéma des tests conforme au méta-schéma json-schema draft-07<br>\n",
+    'showErrors'=> "Le schéma des tests n'est PAS conforme au méta-schéma json-schema draft-07<br>\n"
+  ]);
 
   foreach($filetests as $file) {
     $txt = file_get_contents(__DIR__."/$file.yaml");
@@ -46,14 +45,10 @@ if (!isset($_GET['no'])) {
     
     // vérification que le contenu du doc des tests est conforme à son schéma
     $schema = new JsonSchema($tests['jSchema'], $testsFileverbose);
-    $status = $schema->check($tests);
-    if ($status->ok())
-      echo "ok contenu des tests conforme à son schéma<br>\n";
-    else {
-      echo "Contenu des tests NON conforme à son schéma<br>\n";
-      $status->showErrors();
-    }
-    $status->showWarnings();
+    $schema->check($tests, [
+      'showWarnings'=> "ok, contenu des tests conforme à son schéma<br>\n",
+      'showErrors'=> "KO, Contenu des tests NON conforme à son schéma<br>\n",
+    ]);
 
     echo "<table border=1>";
     foreach ($tests['schemas'] as $nosch => $sch) {
@@ -64,7 +59,7 @@ if (!isset($_GET['no'])) {
       try {
         $schema = new JsonSchema($sch['schema'], $eltTestVerbose);
         foreach ($sch['tests'] as $notest => $test) {
-          $status = $schema->check(JsonSch::deref($test['data']), true);
+          $status = $schema->check(JsonSch::deref($test['data']), [], true);
           $no = "$nosch.$notest";
           echo "<tr><td><a href='?file=$file&amp;no=$no'>$sch[title]</a></td><td>",
                JsonSch::encode($test['data']),"</td>";

@@ -135,7 +135,7 @@ class JsonSchElt {
     else {
       try { // Si filepath alors fichier schéma différent
         $schema = new JsonSchema($path, $this->verbose, $this->schema);
-        return $schema->check($instance, $id, $status);
+        return $schema->check($instance, [], $id, $status);
       } catch (Exception $e) {
         return $status->setError("Sur $id erreur ".$e->getMessage());
       }

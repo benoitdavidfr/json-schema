@@ -13,12 +13,11 @@ doc: |
       - http://json-schema.org/schema# (Core schema meta-schema)
       - http://json-schema.org/draft-07/schema# (idem)
       - http://geojson.org/schema/FeatureCollection.json (schema GeoJSON)
-  
-  A FAiRE:
-    - définir une méthode statique jSchemaCheck() pour tester un doc par rapport à son jSchema
-    - définir une méthode statique simpleCheck() pour tester un doc sans avoir à créer d'objet intermédiaire
 
 journal: |
+  19/1/2019:
+    ajout d'une option d'affichage à la méthode JsonSchema::check() et d'une méthode JsonSchema::autoCheck()
+    publication sur Github
   18/1/2019:
     définition ci-dessus du mécanisme de registre de schéma et mise en oeuvre dans le validateur
     publication sur Github
