@@ -129,6 +129,8 @@ class JsonSchElt {
     //echo "checkRef: filepath=$filepath, eltpath=$eltpath<br>\n";
     if (!$filepath) { // Si pas de filepath alors même fichier schéma
       $content = JsonSch::subElement($this->schema->def(), $eltpath);
+      if (!$content)
+        return $status->setError("Erreur $eltpath non trouvé");
       $schemaElt = new self($content, $this->schema, $this->verbose);
       return $schemaElt->check($instance, $id, $status);
     }
@@ -146,37 +148,44 @@ class JsonSchElt {
   private function checkAnyOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
       echo "checkAnyOf(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    $errors = []; // liste des erreurs dans les différentes branches
     foreach ($this->def['anyOf'] as $schemaDef) {
       $schema = new self($schemaDef, $this->schema, $this->verbose);
       $status2 = new JsonSchStatus;
       $status2 = $schema->check($instance, $id, $status2);
       if ($status2->ok())
         return $status->append($status2);
+      else
+        $errors[] = $status2;
     }
-    return $status->setError("aucun schema anyOf pour $id");
+    return $status->setErrorBranch("aucun schema anyOf pour $id", $errors);
   }
   
   // traitement du cas où le schema est défini par un oneOf
   private function checkOneOf(string $id, $instance, JsonSchStatus $status): JsonSchStatus {
     if ($this->verbose)
       echo "checkOneOf(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+    $errors = []; // liste des erreurs dans les différentes branches
     $done = false;
     foreach ($this->def['oneOf'] as $schemaDef) {
       $schema = new self($schemaDef, $this->schema, $this->verbose);
       $status2 = new JsonSchStatus;
       $status2 = $schema->check($instance, $id, $status2);
-      if ($status2->ok())
-        if (!$done) {
-          $status->append($status2);
-          $done = true;
-        }
-        else
-          return $status->setError("Plusieurs schema oneOf pour $id");
+      if (!$status2->ok()) {
+        $errors[] = $status2;
+        //echo $status2;
+      }
+      elseif (!$done) {
+        $status->append($status2);
+        $done = true;
+      }
+      else
+        return $status->setError("Plusieurs schema oneOf pour $id");
     }
     if ($done)
       return $status;
     else
-      return $status->setError("aucun schema oneOf pour $id");
+      return $status->setErrorBranch("aucun schema oneOf pour $id", $errors);
   }
   
   // traitement du cas où le schema est défini par un allOf
@@ -190,7 +199,7 @@ class JsonSchElt {
       if ($status2->ok())
         $status->append($status2);
       else
-        return $status->setError("schema $no de allOf non vérifié pour $id");
+        return $status->setErrorBranch("schema $no de allOf non vérifié pour $id", [$status2]);
     }
     return $status;
   }

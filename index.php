@@ -10,6 +10,9 @@ doc: |
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
     - conversion interactive entre JSON et Yaml
 journal: |
+  20/1/2019:
+    ajout d'une récupération d'exception dans le check
+    ajout du test de validation des examples et counterexamples
   9/1/2019
     ajout conversion interactive JSON <-> Yaml
   9/1/2019
@@ -26,7 +29,7 @@ use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
 
 // liste des signets du menu initial
-$bookmarks = [ 'ex', 'geojson' ];
+$bookmarks = [ 'ex', 'geojson', '..' ];
   
 // si le paramètre file n'est pas défini alors affichage des signets
 if (!isset($_GET['file']) && !isset($_GET['action'])) {
@@ -146,24 +149,45 @@ EOT;
 if (isset($_GET['action']) && ($_GET['action']=='fchoice')) {
   $schema_choices = [
     'json-schema.schema.json'=> "méta schéma JSON",
+    'geojson/featurecollection.schema.json'=> "FeatureCollection GeoJSON",
+    'geojson/feature.schema.json'=> "feature GeoJSON",
+    'geojson/geometry.schema.yaml'=> "geometry GeoJSON",
   ];
-  $schema = isset($_GET['schema']) ? $_GET['schema'] : '';
-  $instance = isset($_GET['instance']) ? $_GET['instance'] : "Coller ici l'instance";
+  $schema = isset($_GET['schema']) ? $_GET['schema'] : array_keys($schema_choices)[0];
+  $schemaTxt = file_get_contents(__DIR__."/$schema");
+  $instanceTxt = isset($_GET['instance']) ? $_GET['instance'] : "Coller ici l'instance";
   $select = "<select name='schema'>\n";
   foreach ($schema_choices as $name => $title)
-    $select .= "<option value='$name'>$title</option>\n";
+    $select .= "<option value='$name'".($name==$_GET['schema'] ? ' selected': '').">$title</option>\n";
   $select .= "</select>";
   echo <<<EOT
-<form>
-Schema: $select
-<br>
-Instance:<br>
-<textarea name="instance" rows="20" cols="100">$instance</textarea><br>
+<form><table border=1>
+  <tr><td>Schema: $select</td></tr>
+  <tr>
+    <td>Instance:<br><textarea name="instance" rows="20" cols="80">$instanceTxt</textarea></td>
+    <td>Affichage du contenu du schema:<br><textarea rows="20" cols="79">$schemaTxt</textarea></td>
+  </tr>
 <input type='hidden' name='action' value='fchoice'>
-<input type="submit">
-</form>
-<a href='?'>Retour à l'accueil</a>
+<tr><td><input type="submit"></td></tr>
+</table></form>
+<a href='?'>Retour à l'accueil</a><br>
 EOT;
+  $schema = new JsonSchema(__DIR__."/$schema");
+  try {
+    $instance = Yaml::parse($instanceTxt, Yaml::PARSE_DATETIME);
+  } catch(Exception $e) {
+    $instance = json_decode($instanceTxt, true);
+    if ($instance === null) {
+      echo "L'instance n'est ni du Yaml (",$e->getMessage(),"), ni du JSON (".json_last_error_msg().").<br>\n";
+      die();
+    }
+    $instanceLang = 'JSON';
+  }
+  $status = $schema->check($instance, [
+    'showWarnings'=> "ok instance conforme au schéma<br>\n",
+    'showErrors'=> "KO instance NON conforme au schéma<br>\n",
+  ]);
+  
   die();
 }
 
@@ -186,7 +210,7 @@ EOT;
   } catch(Exception $e) {
     $doc = json_decode($text, true);
     if ($doc === null) {
-      echo "Le texte n'est ni du Yaml (",$e->getMessage(),"), ni du JSON.<br>\n";
+      echo "Le texte n'est ni du Yaml (",$e->getMessage(),"), ni du JSON (".json_last_error_msg().").<br>\n";
       die();
     }
   }
@@ -232,12 +256,16 @@ if ($_GET['action'] == 'check') {
   $fileext = is_file(__DIR__."/$_GET[file].yaml") ? 'yaml' : (is_file(__DIR__."/$_GET[file].json") ? 'json' : null);
   if (!$fileext)
     die("$_GET[file] ni json ni yaml");
-  $content = JsonSch::file_get_contents(__DIR__."/$_GET[file].$fileext");
+  try {
+    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file].$fileext");
+  } catch (Exception $e) {
+    die("Erreur de lecture de $_GET[file].$fileext : ".$e->getMessage());
+  }
 
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
   $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
-  if (isset($content['jSchema'])) {
+  if (isset($content['jSchema'])) { # c'est un document à  valider par rapport à son schema
     $jSchema = (is_string($content['jSchema'])) ?
       JsonSch::file_get_contents(JsonSch::predef($content['jSchema']))
        : $content['jSchema'];
@@ -252,11 +280,23 @@ if ($_GET['action'] == 'check') {
       'verbose'=> $verbose,
     ]);
   }
-  else {
+  else { # c'est un schema, je le valide par rapport au méta-schéma
     $metaschema->check($content, [
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
     ]);
+    $schema = new JsonSchema($content, $verbose);
+    foreach (['examples'=> 'exemple', 'counterexamples'=> 'contre-exemple'] as $key=> $label) {
+      if (isset($content[$key])) { # et je vérifie les exemples et contre-ex
+        foreach ($content[$key] as $i => $ex) {
+          $title = !isset($ex['title']) ? $i : (!is_array($ex['title']) ? "\"$ex[title]\"" : json_encode($ex['title']));
+          $schema->check($ex, [
+            'showWarnings'=> "ok $label $title conforme au schéma<br>\n",
+            'showErrors'=> "KO $label $title NON conforme au schéma<br>\n",
+          ]);
+        }
+      }
+    }
   }
   
   die();

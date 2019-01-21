@@ -417,13 +417,38 @@ doc: |
   La classe JsonSchStatus définit le statut d'une vérification de conformité d'une instance
   Un objet de cette classe est retourné par une vérification.
   La conformité de l'instance au schéma peut être testée et les erreurs et alertes peuvent être fournies
+
+  Les erreurs recensées sont organisées sous la forme d'une liste soit de chaines, soit de groupes d'erreurs
+  Un groupe d'erreurs correspond à une erreur sur un oneOf
+  C'est une structure avec un label et comme children une liste de listes de chaines
+  Le premier niveau de liste correspond aux possibilités de choix de schéma
+  Le second à la liste des erreurs retournées en traitant ce choix
+  exemple: http://localhost/schema/?schema=geojson%2Fgeometry.schema.yaml&instance=type%3A+LineString%0D%0Acoordinates%3A+%5B1%2C+2%5D&action=fchoice
 */
 class JsonSchStatus {
   private $warnings=[]; // liste des warnings
-  private $errors=[]; // liste des erreurs dans l'instance
+  private $errors=[]; // erreurs dans l'instance [string|{label: string, children: [errors]}]
+  
+  function __toString(): string {
+    $s = '';
+    if ($this->errors)
+      $s .= '<pre><b>'.Yaml::dump(['Errors'=>$this->errors], 999)."</b></pre>\n";
+    if ($this->warnings)
+      $s .= '<pre><i>'.Yaml::dump(['Warnings'=> $this->warnings], 999)."</i></pre>";
+    return $s;
+  }
   
   // ajoute une erreur
   function setError(string $message): JsonSchStatus { $this->errors[] = $message; return $this; }
+  
+  // ajoute une branche d'erreurs
+  function setErrorBranch(string $message, array $statusArray): JsonSchStatus {
+    $children = [];
+    foreach ($statusArray as $status2)
+      $children[] = $status2->errors;
+    $this->errors[] = ['label'=> $message, 'children'=> $children];
+    return $this;
+  }
   
   /*PhpDoc: methods
   name: ok
