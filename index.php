@@ -10,6 +10,8 @@ doc: |
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
     - conversion interactive entre JSON et Yaml
 journal: |
+  22/1/2019:
+    ajout du test de validation des examples et counterexamples des définitions
   20/1/2019:
     ajout d'une récupération d'exception dans le check
     ajout du test de validation des examples et counterexamples
@@ -294,6 +296,23 @@ if ($_GET['action'] == 'check') {
             'showWarnings'=> "ok $label $title conforme au schéma<br>\n",
             'showErrors'=> "KO $label $title NON conforme au schéma<br>\n",
           ]);
+        }
+      }
+    }
+    if (isset($content['definitions'])) {
+      foreach ($content['definitions'] as $defName => $definition) {
+        //echo "Check $defName ",json_encode($definition),"<br>\n";
+        $defSch = new JsonSchema(__DIR__."/$_GET[file].$fileext#/definitions/$defName", $verbose);
+        foreach (['examples'=> 'exemple', 'counterexamples'=> 'contre-exemple'] as $key=> $label) {
+          if (isset($definition[$key])) { # et je vérifie les exemples et contre-ex pour cette définition
+            foreach ($definition[$key] as $i => $ex) {
+              //echo "check de ",json_encode($ex),"<br>\n";
+              $defSch->check($ex, [
+                'showWarnings'=> "ok $label de $defName no $i conforme au schéma<br>\n",
+                'showErrors'=> "KO $label de $defName no $i NON conforme au schéma<br>\n",
+              ]);
+            }
+          }
         }
       }
     }

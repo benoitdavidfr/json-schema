@@ -17,6 +17,9 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  23/1/2019:
+    correction d'un bug lors de l'ouverture d'un schéma dont le chemin est défini en relatif
+    amélioration de l'erreur lors qu'un élément d'un schéma n'est pas défini
   19/1/2019:
     scission du fichier jsonschema.inc.php en jsonschema.inc.php et jsonschelt.inc.php
     ajout de JsonSch::deref() pour déréférencer un pointeur JSON
@@ -250,9 +253,11 @@ class JsonSchema {
     le troisième paramètre contient éventuellement le schema père et n'est utilisé qu'en interne à la classe
   */
   function __construct($def, bool $verbose=false, ?JsonSchema $parent=null) {
+    $def0 = $def;
     $this->verbose = $verbose;
     if ($verbose)
-      echo "JsonSchema::_construct(def=",json_encode($def),", parent",$parent?'<>':'=',"null)<br>\n";
+      echo "JsonSchema::_construct(def=",json_encode($def),",",
+           " parent->filepath=",$parent?$parent->filepath:'none',")<br>\n";
     $this->status = new JsonSchStatus;
     if (is_string($def)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
       $def = JsonSch::predef($def); // remplacement des chemins prédéfinis par leur équivalent local
@@ -260,20 +265,26 @@ class JsonSchema {
         throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
       $filepath = $matches[1]; // partie avant #
       $eltpath = isset($matches[4]) ? $matches[4] : ''; // partie après #
-      $this->filepath = $filepath;
       //echo "filepath=$filepath, eltpath=$eltpath<br>\n";
-      if ((substr($filepath, 0, 7)=='http://') || (substr($filepath, 0, 1)=='/')) { // si chemin défini en absolu
+      if ((substr($filepath, 0, 7)=='http://') || (substr($filepath, 0, 8)=='https://')
+          || (substr($filepath, 0, 1)=='/')) { // si chemin défini en absolu
+        //echo "chemin défini en absolu<br>\n";
         $def = JsonSch::file_get_contents($filepath);
+        $this->filepath = $filepath;
       }
       else { // cas où le chemin du fichier est défini en relatif, utiliser alors le répertoire du schéma parent
+        //echo "chemin défini en relatif<br>\n";
         if (!$parent)
           throw new Exception("Ouverture de $filepath impossible sans schema parent");
         if (!($pfilepath = $parent->filepath))
           throw new Exception("Ouverture de $filepath impossible car le filepath du schema parent n'est pas défini");
         $pfiledir = dirname($pfilepath);
-        $def = JsonSch::file_get_contents("$pfiledir/$filepath");
+        $this->filepath = "$pfiledir/$filepath";
+        $def = JsonSch::file_get_contents($this->filepath);
       }
       $eltDef = $eltpath ? JsonSch::subElement($def, $eltpath) : $def; // la définition de l'élément
+      if (!$eltDef)
+        throw new Exception("Ouverture de $def0 impossible car le chemin $eltpath n'existe pas dans le schéma");
     }
     elseif (is_array($def)) { // le premier paramètre est le contenu comme array Php
       $this->filepath = null;
@@ -290,7 +301,7 @@ class JsonSchema {
       return;
     }
     else
-      throw new Exception("Erreur paramètre incorrect dans la création d'un schéma");
+      throw new Exception("Erreur paramètre def incorrect dans la création d'un schéma");
     $this->def = $def;
     
     if (!isset($def['$ref']) &&

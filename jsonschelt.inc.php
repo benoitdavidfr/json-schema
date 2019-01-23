@@ -28,8 +28,9 @@ class JsonSchElt {
     if ($verbose)
       echo "JsonSchElt::_construct(def=",json_encode($def),", schema, verbose=",$verbose?'true':'false',")<br>\n";
     if (!is_array($def) && !is_bool($def)) {
-      echo "JsonSchElt::__construct(def=",json_encode($this->def),")<br><br>\n";
-      throw new Exception("TypeError: Argument def passed to JsonSchElt::__construct() must be of the type array or boolean");
+      $errorMessage = "TypeError: Argument def passed to JsonSchElt::__construct() must be of the type array or boolean";
+      echo "JsonSchElt::__construct(def=",json_encode($this->def),")<br>$errorMessage<br><br>\n";
+      throw new Exception($errorMessage);
     }
     $this->verbose = $verbose;
     $this->def = $def;
@@ -176,7 +177,7 @@ class JsonSchElt {
         //echo $status2;
       }
       elseif (!$done) {
-        $status->append($status2);
+        //$status->append($status2);
         $done = true;
       }
       else
