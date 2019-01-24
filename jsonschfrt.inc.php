@@ -1,10 +1,12 @@
 <?php
 /*PhpDoc:
-name: jsonschelt.inc.php
-title: jsonschelt.inc.php - définition de la classe JsonSchElt utilisée par le validateur de schéma JSON
+name: jsonschfrt.inc.php
+title: jsonschfrt.inc.php - définition de la classe JsonSchFragment utilisée par le validateur de schéma JSON
 classes:
 doc: |
 journal: |
+  24/1/2019:
+    chgt de nom de la classe de Elt en Fragment et du fichier de jsonschelt en jsonschfrt
   19/1/2019:
     scission du fichier jsonschema.inc.php en jsonschema.inc.php et jsonschelt.inc.php
   1-18/1/2019:
@@ -14,10 +16,10 @@ use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 /*PhpDoc: classes
-name: JsonSchElt
-title: class JsonSchElt - classe interne utilisée par JsonSchema définissant un élémént d'un schema JSON
+name: JsonSchFragment
+title: class JsonSchFragment - classe interne utilisée par JsonSchema définissant un fragment d'un schema JSON
 */
-class JsonSchElt {
+class JsonSchFragment {
   const RFC3339_EXTENDED = 'Y-m-d\TH:i:s.vP'; // DateTimeInterface::RFC3339_EXTENDED
   private $verbose; // verbosité boolean
   private $def; // définition de l'élément courant du schema sous la forme d'un array ou d'un booléen Php
@@ -26,10 +28,10 @@ class JsonSchElt {
   
   function __construct($def, JsonSchema $schema, bool $verbose) {
     if ($verbose)
-      echo "JsonSchElt::_construct(def=",json_encode($def),", schema, verbose=",$verbose?'true':'false',")<br>\n";
+      echo "JsonSchFragment::_construct(def=",json_encode($def),", schema, verbose=",$verbose?'true':'false',")<br>\n";
     if (!is_array($def) && !is_bool($def)) {
-      $errorMessage = "TypeError: Argument def passed to JsonSchElt::__construct() must be of the type array or boolean";
-      echo "JsonSchElt::__construct(def=",json_encode($this->def),")<br>$errorMessage<br><br>\n";
+      $errorMessage = "TypeError: Argument def passed to JsonSchFragment::__construct() must be of the type array or boolean";
+      echo "JsonSchFragment::__construct(def=",json_encode($this->def),")<br>$errorMessage<br><br>\n";
       throw new Exception($errorMessage);
     }
     $this->verbose = $verbose;
@@ -42,7 +44,7 @@ class JsonSchElt {
   function def(): array { return $this->def; }
 
   // le schema d'une des propriétés de l'object ou null si elle n'est pas définie
-  private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchElt {
+  private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchFragment {
     if (0 && $this->verbose)
       echo "schemaOfProperty(id=$id, propname=$propname)@def=$this<br><br>\n";
     if (isset($this->def['properties'][$propname]) && $this->def['properties'][$propname])

@@ -69,7 +69,7 @@ journal: |
     première version
 */
 require_once __DIR__.'/../vendor/autoload.php';
-require_once __DIR__.'/jsonschelt.inc.php';
+require_once __DIR__.'/jsonschfrt.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
@@ -240,7 +240,7 @@ class JsonSchema {
   private $verbose; // true pour afficher des commentaires
   private $filepath; // chemin du fichier contenant le schéma éventuellement null si inconnu
   private $def; // contenu du schéma comme array Php ou boolean
-  private $elt; // objet JsonSchElt correspondant au schéma ou null si $def est booléen
+  private $elt; // objet JsonSchFragment correspondant au schéma ou null si $def est booléen
   private $status; // objet JsonSchStatus contenant le statut issu de la création du schéma
 
   /*PhpDoc: methods
@@ -311,7 +311,7 @@ class JsonSchema {
       foreach (array_keys($def['definitions']) as $defid)
         self::checkDefinition($defid, $def['definitions']);
     }
-    $this->elt = new JsonSchElt($eltDef, $this, $verbose);
+    $this->elt = new JsonSchFragment($eltDef, $this, $verbose);
   }
   
   // définition du contenu du schéma sous la forme d'un array Php ou un boolean
