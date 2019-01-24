@@ -5,6 +5,12 @@ doc: |
   https://json-schema.org/
   exemples dans ex et geojson
   
+  $schema
+    Le mot-clé est utilisé dans un schema JSON pour identifier le schéma auquel le document correspond
+    J'étends cette utilisation en utilisant ce mot-clé dans n'importe quel document Yaml ou JSON
+    soit pour référencer son schéma soit pour contenir en ligne le schéma sous la forme d'un fragment
+    Lorsqu'un schéma est référencé, le nom ne doit pas comporter .schema.yaml qui est automatiquement ajouté
+     
   Mécanisme de registre de schéma:
     J'utilise l'URI http://{name}.georef.eu/ pour identifier et localiser des schémas locaux
     Les URI de la forme http://schema.georef.eu/{path} sont transformés en __DIR__./{path}
@@ -13,6 +19,7 @@ doc: |
       - http://json-schema.org/schema# (Core schema meta-schema)
       - http://json-schema.org/draft-07/schema# (idem)
       - http://geojson.org/schema/FeatureCollection.json (schema GeoJSON)
+      
   A FAIRE:
     - améliorer les alertes
 journal: |
