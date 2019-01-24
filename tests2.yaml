@@ -1,5 +1,5 @@
 title: liste de tests divers
-jSchema: http://schema.georef.eu/tests.schema.yaml
+$schema: http://schema.georef.eu/tests.schema.yaml
 schemas:
   - title: json-schema draft-07 en localhost
     schema: {$ref: http://localhost/schema/json-schema.schema.json}

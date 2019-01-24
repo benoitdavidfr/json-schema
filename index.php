@@ -4,12 +4,13 @@ name: index.php
 title: index.php - test de la classe JsonSchema
 doc: |
   Fournit les fonctionnalités suivantes:
-    - parcours interactif des fichiers json/yaml pour valider soit s'il existe par rapport à son jSchema
-      soit sinon par rapport au méta-schéma JSON-Schema
+    - parcours interactif des fichiers json/yaml pour valider soit s'il existe par rapport à son $schema
     - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
     - conversion interactive entre JSON et Yaml
 journal: |
+  24/1/2019:
+    utilisation du mot-clé $schema à la place de jSchema
   22/1/2019:
     ajout du test de validation des examples et counterexamples des définitions
   20/1/2019:
@@ -245,8 +246,9 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
 
 // les fichiers à tester contiennent soit des données spécifiées par un schéma soit un schéma
 // dans le premier cas: vérification de la conformité des données au schéma et du schéma au méta-schéma
-// dans le second uniquement vérification de la conformité au méta-schéma
-// dans un fichier de données, le schéma est défini par le champ jSchema ou json-schema
+// dans le second: vérification de la conformité du schéma au méta-schéma et validation des exemples
+// et contre-exemples au schéma
+// Dans un fichier de données, le schéma est défini par le champ $schema
 if ($_GET['action'] == 'check') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema check</title></head><body>\n";
   $verbose = false;
@@ -267,26 +269,14 @@ if ($_GET['action'] == 'check') {
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
   $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
-  if (isset($content['jSchema'])) { # c'est un document à  valider par rapport à son schema
-    $jSchema = (is_string($content['jSchema'])) ?
-      JsonSch::file_get_contents(JsonSch::predef($content['jSchema']))
-       : $content['jSchema'];
-    $metaschema->check($jSchema, [
-      'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
-      'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
-    ]);
-    JsonSchema::autoCheck(__DIR__."/$_GET[file].$fileext", [
-    //JsonSchema::autoCheck($content, [
-      'showWarnings'=> "ok instance conforme au schéma<br>\n",
-      'showErrors'=> "KO instance NON conforme au schéma<br>\n",
-      'verbose'=> $verbose,
-    ]);
-  }
-  else { # c'est un schema, je le valide par rapport au méta-schéma
+  if (!isset($content['$schema']))
+    die('Erreur $schema non défini'."\n");
+  if (in_array($content['$schema'], JsonSchema::SCHEMAIDS)) { // c'est un schema, je le valide / au méta-schéma
     $metaschema->check($content, [
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
     ]);
+    // puis je valide les exemples et les contre-exemples du schema et des définitions
     $schema = new JsonSchema($content, $verbose);
     foreach (['examples'=> 'exemple', 'counterexamples'=> 'contre-exemple'] as $key=> $label) {
       if (isset($content[$key])) { # et je vérifie les exemples et contre-ex
@@ -316,6 +306,22 @@ if ($_GET['action'] == 'check') {
         }
       }
     }
+  }
+  
+  else { // c'est un document à valider par rapport à son schema
+    $jSchema = (is_string($content['$schema'])) ?
+      JsonSch::file_get_contents(JsonSch::predef($content['$schema'].'.schema.yaml'))
+       : $content['$schema'];
+    $metaschema->check($jSchema, [
+      'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
+      'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
+    ]);
+    JsonSchema::autoCheck(__DIR__."/$_GET[file].$fileext", [
+    //JsonSchema::autoCheck($content, [
+      'showWarnings'=> "ok instance conforme au schéma<br>\n",
+      'showErrors'=> "KO instance NON conforme au schéma<br>\n",
+      'verbose'=> $verbose,
+    ]);
   }
   
   die();

@@ -1,5 +1,5 @@
 # Test testref2 pour tester les différents types de reférence à un schéma dans le cas d'un schéma inline
-jSchema:
+$schema:
   $schema: http://json-schema.org/draft-07/schema#
   $id: http://localhost/schema/ex/testref2.schema.yaml
   title: Schema test testref2 - test des différents types de référence à un schéma dans le cas d'un schéma inline

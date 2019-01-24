@@ -28,9 +28,9 @@ phpDoc:
       Les cartes 6884, 6671 et 7616 posent pbs. Les bordures semblent à revoir.
 path: ../../shomgeotiff/current/
 
-jSchema:
+$schema:
   $schema: http://json-schema.org/draft-07/schema#
-  $id: http://geoapi.fr/shomgt/shomgt.yaml#/jSchema
+  $id: http://geoapi.fr/shomgt/shomgt.yaml#/$schema
   title: Schéma JSON du fichier shomgt.yaml
   definitions:
     geotiffSchema:
@@ -70,7 +70,7 @@ jSchema:
         doc: { type: string }
         journal: { type: string }
       required: [ name, title, doc, journal ]
-    jSchema:
+    $schema:
       $ref: '/var/www/html/schema/json-schema.schema.json'
     path: { type: string }
     notDisplayed:

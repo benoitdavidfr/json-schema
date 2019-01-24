@@ -1,4 +1,4 @@
-jSchema:  {
+$schema:  {
     "$id": "https://example.com/event.schema.json",
     "$schema": "http://json-schema.org/draft-07/schema#",
     "description": "A representation of an event",
@@ -41,7 +41,7 @@ jSchema:  {
         "type": "string"
       },
       "geox": {
-        "$ref": "http://schema.georef.eu/ex/geo.yaml#/jSchema"
+        "$ref": "http://schema.georef.eu/ex/geo.yaml#/$schema"
       }
       "geoy": {
         "$ref": "http://schema.georef.eu/ex/geo.schema.json"

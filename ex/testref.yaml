@@ -1,5 +1,5 @@
 # Test testref pour tester les différents types de reférence à un schéma
-jSchema: http://localhost/schema/ex/testref.schema.yaml
+$schema: http://schema.georef.eu/ex/testref
 styleIntern:
   color: blue
 styleRelFile:

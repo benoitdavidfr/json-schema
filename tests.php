@@ -6,6 +6,8 @@ doc: |
   Par défaut lit les différents fichiers de test et exécute chaque test.
   Permet aussi dexécuter un test particulier.
 journal: |
+  24/1/2019
+    utilisation du mot-clé $schema à la place de jSchema
   1-18/1/2019
     première version
 */
@@ -44,7 +46,7 @@ if (!isset($_GET['no'])) {
     echo "<h2>$tests[title]</h2>\n";
     
     // vérification que le contenu du doc des tests est conforme à son schéma
-    $schema = new JsonSchema($tests['jSchema'], $testsFileverbose);
+    $schema = new JsonSchema($tests['$schema'], $testsFileverbose);
     $schema->check($tests, [
       'showWarnings'=> "ok, contenu des tests conforme à son schéma<br>\n",
       'showErrors'=> "KO, Contenu des tests NON conforme à son schéma<br>\n",

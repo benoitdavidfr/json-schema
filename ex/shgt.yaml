@@ -1,3 +1,4 @@
+$schema: http://schema.georef.eu/ex/shgt
 name: shomgt.yaml
 phpDoc:
   name: shomgt.yaml
@@ -27,8 +28,6 @@ phpDoc:
       La carte 6643 n'est pas en WGS84, le GAN non plus ! Toutes les bordures sont à corriger !
       Les cartes 6884, 6671 et 7616 posent pbs. Les bordures semblent à revoir.
 path: ../../shomgeotiff/current/
-
-jSchema: http://schema.georef.eu/ex/shgt.schema.yaml
     
 gt12k:
   3127/3127_pal300:

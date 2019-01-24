@@ -16,6 +16,8 @@ doc: |
   A FAIRE:
     - améliorer les alertes
 journal: |
+  24/1/2019:
+    utilisation du mot-clé $schema à la place de jSchema
   19/1/2019:
     scission de jsonschema.inc.php en 2
     ajout d'une option d'affichage à la méthode JsonSchema::check() et d'une méthode JsonSchema::autoCheck()

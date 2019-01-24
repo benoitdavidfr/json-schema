@@ -5,7 +5,7 @@ required: [title, schemas]
 properties:
   title: {type: string}
   source: {type: string}
-  jSchema: {type: string}
+  $schema: {type: string}
   schemas:
     description: liste de schemas à tester avec chacun une liste de tests
     type: array

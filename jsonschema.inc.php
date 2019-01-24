@@ -17,6 +17,8 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  24/1/2019:
+    utilisation du mot-clé $schema à la place de jSchema
   23/1/2019:
     correction d'un bug lors de l'ouverture d'un schéma dont le chemin est défini en relatif
     amélioration de l'erreur lors qu'un élément d'un schéma n'est pas défini
@@ -388,9 +390,9 @@ class JsonSchema {
   
   /*PhpDoc: methods
   name: check
-  title: "autoCheck($instance, array $options=[]): ?JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ jSchema"
+  title: "autoCheck($instance, array $options=[]): ?JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ $schema"
   doc: |
-    autoCheck() valide la conformité d'une instance à son schéma défini par le champ jSchema
+    autoCheck() valide la conformité d'une instance à son schéma défini par le champ $schema
     autoCheck() prend un ou 2 paramètres
      - le premier paramètre est soit l'instance à valider comme valeur Php, soit le chemin du fichier la contenant
      - le second paramètre indique éventuellement l'affichage à effectuer en fonction du résultat de la validation
@@ -413,9 +415,10 @@ class JsonSchema {
       $def = JsonSch::file_get_contents($filepath);
       $instance = $eltpath ? JsonSch::subElement($def, $eltpath) : $def; // la définition de l'élément
     }
-    if (!isset($instance['jSchema']))
+    if (!isset($instance['$schema']))
       return null;
-    $schema = new JsonSchema($instance['jSchema'], isset($options['verbose']) && $options['verbose']);
+    $jSchema = is_string($instance['$schema']) ? $instance['$schema'].'.schema.yaml' : $instance['$schema'];
+    $schema = new JsonSchema($jSchema, isset($options['verbose']) && $options['verbose']);
     return $schema->check($instance, $options);
   }
 };

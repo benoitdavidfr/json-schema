@@ -1,6 +1,6 @@
 title: ROUTE 500 2018
 # Description de ROUTE 500
-jSchema: http://schema.georef.eu/ex/featureds.schema.yaml
+$schema: http://schema.georef.eu/ex/featureds
 abstract: |
   La base de données ROUTE 500® contient l'intégralité du réseau routier classé caractérisé par un certain nombre de propriétés et complété par les éléments du réseau routier secondaire permettant la desserte des chefs-lieux de communes et des principales infrastructures de transport.
 

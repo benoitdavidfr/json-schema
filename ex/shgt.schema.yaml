@@ -39,7 +39,7 @@ properties:
       doc: { type: string }
       journal: { type: string }
     required: [ name, title, doc, journal ]
-  jSchema: { type: string }
+  $schema: { type: string }
   path: { type: string }
   notDisplayed:
     type: object
