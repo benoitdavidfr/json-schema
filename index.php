@@ -229,14 +229,8 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema find</title></head><body>\n";
   if ($dh = opendir($dir)) {
     while (($file = readdir($dh)) !== false) {
-      if (in_array(substr($file, -5), ['.yaml','.json']))
-        $bfile = substr($file, 0, strlen($file)-5);
-      elseif (is_dir("$dir/$file"))
-        $bfile = $file;
-      else
-        continue;
-      
-      echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]/$bfile'>$file</a><br>\n";
+      if (in_array(substr($file, -5), ['.yaml','.json']) || (substr($file, -4)=='.php') || is_dir("$dir/$file"))
+        echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]/$file'>$file</a><br>\n";
     }
     closedir($dh);
   }
@@ -257,14 +251,11 @@ if ($_GET['action'] == 'check') {
   else
     echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]&amp;verbose=true'>verbose</a><br>\n";
   
-  $fileext = is_file(__DIR__."/$_GET[file].yaml") ? 'yaml' : (is_file(__DIR__."/$_GET[file].json") ? 'json' : null);
-  if (!$fileext)
-    die("$_GET[file] ni json ni yaml");
-  try {
-    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file].$fileext");
-  } catch (Exception $e) {
-    die("Erreur de lecture de $_GET[file].$fileext : ".$e->getMessage());
-  }
+  //try {
+    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file]");
+    //} catch (Exception $e) {
+    //die("Erreur de lecture de $_GET[file] : ".$e->getMessage());
+    //}
 
   echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
 
@@ -292,7 +283,7 @@ if ($_GET['action'] == 'check') {
     if (isset($content['definitions'])) {
       foreach ($content['definitions'] as $defName => $definition) {
         //echo "Check $defName ",json_encode($definition),"<br>\n";
-        $defSch = new JsonSchema(__DIR__."/$_GET[file].$fileext#/definitions/$defName", $verbose);
+        $defSch = new JsonSchema(__DIR__."/$_GET[file]#/definitions/$defName", $verbose);
         foreach (['examples'=> 'exemple', 'counterexamples'=> 'contre-exemple'] as $key=> $label) {
           if (isset($definition[$key])) { # et je vérifie les exemples et contre-ex pour cette définition
             foreach ($definition[$key] as $i => $ex) {
@@ -316,7 +307,7 @@ if ($_GET['action'] == 'check') {
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
     ]);
-    JsonSchema::autoCheck(__DIR__."/$_GET[file].$fileext", [
+    JsonSchema::autoCheck(__DIR__."/$_GET[file]", [
     //JsonSchema::autoCheck($content, [
       'showWarnings'=> "ok instance conforme au schéma<br>\n",
       'showErrors'=> "KO instance NON conforme au schéma<br>\n",

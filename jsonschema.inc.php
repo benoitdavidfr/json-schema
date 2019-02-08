@@ -17,6 +17,10 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  5-8/2/2019:
+    ajout de la possibilité dans JsonSch::file_get_contents d'exécuter un fichier Php renvoyant un array Php
+  26/1/2019:
+    modification dans JsonSchema::autoCheck() du cas ou on ajoute .schema.yaml au nom du fichier du schéma
   24/1/2019:
     utilisation du mot-clé $schema à la place de jSchema
   23/1/2019:
@@ -181,7 +185,8 @@ class JsonSch {
     return $result;
   }
  
-  // récupère le contenu d'un fichier JSON ou Yaml, renvoie une exception en cas d'erreur
+  // récupère le contenu d'un fichier JSON ou Yaml ou exécute un fichier Php renvoyant un array Php
+  // retourne un array Php ou en cas d'erreur génère une exception
   static function file_get_contents(string $path): array {
     //echo "jsonfile_get_contents(path=$path)<br>\n";
     if (($txt = @file_get_contents($path)) === false)
@@ -198,6 +203,10 @@ class JsonSch {
       if (($doc = json_decode($txt, true)) === null)
         throw new Exception("Décodage JSON du fichier $path incorrect: ".json_last_error_msg());
       return $doc;
+    }
+    elseif (substr($path, -4)=='.php') {
+      // Le script Php doit renvoyer un array Php
+      return require $path;
     }
     else {
       try {
@@ -389,7 +398,7 @@ class JsonSchema {
   }
   
   /*PhpDoc: methods
-  name: check
+  name: autoCheck
   title: "autoCheck($instance, array $options=[]): ?JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ $schema"
   doc: |
     autoCheck() valide la conformité d'une instance à son schéma défini par le champ $schema
@@ -405,6 +414,10 @@ class JsonSchema {
     autoCheck() renvoit un JsonSchStatus ou null si le schema n'est pas défini
   */
   static function autoCheck($instance, array $options=[]): ?JsonSchStatus {
+    $verbose = isset($options['verbose']) && $options['verbose'];
+    if ($verbose)
+      echo "JsonSchema::autoCheck(instance=",json_encode($instance),",options=",json_encode($options),")<br>\n";
+    
     if (is_string($instance)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
       $instance = JsonSch::predef($instance); // remplacement des chemins prédéfinis par leur équivalent local
       if (!preg_match('!^([^#]+)(#(.*))?$!', $instance, $matches))
@@ -417,8 +430,10 @@ class JsonSchema {
     }
     if (!isset($instance['$schema']))
       return null;
-    $jSchema = is_string($instance['$schema']) ? $instance['$schema'].'.schema.yaml' : $instance['$schema'];
-    $schema = new JsonSchema($jSchema, isset($options['verbose']) && $options['verbose']);
+    $jSchema = $instance['$schema'];
+    if (is_string($jSchema) && (strpos($jSchema, '#')===false))
+      $jSchema .= '.schema.yaml';
+    $schema = new JsonSchema($jSchema, $verbose);
     return $schema->check($instance, $options);
   }
 };

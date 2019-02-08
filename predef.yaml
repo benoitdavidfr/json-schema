@@ -5,7 +5,7 @@ abstract: |
   par un chemin local.
   Ces remplacements sont effectués par la méthode statique JsonSchPointer::predef(string): string
   qui peut être utilisée en dehors du contexte d'un schéma.
-modified: '2019-01-24'
+modified: '2019-01-26'
 $schema:
   $id: http://schema.georef.eu/predef.yaml#/$schema
   $schema: http://json-schema.org/draft-07/schema#
@@ -64,3 +64,5 @@ patterns:
     localPath: ''
   ^http://yamldoc.georef.eu:
     localPath: /../yamldoc
+  ^http://ydclasses.georef.eu:
+    localPath: /../yamldoc/ydclasses

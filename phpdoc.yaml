@@ -1,8 +1,7 @@
 title: schema - validation de la conformité d'une instance à un schéma JSON
 path: /schema
 doc: |
-  Utilisation de schema JSON
-  https://json-schema.org/
+  Validation d'un document par rapport à un schéma JSON (https://json-schema.org/)
   exemples dans ex et geojson
   
   $schema
@@ -22,6 +21,8 @@ doc: |
       
   A FAIRE:
     - améliorer les alertes
+    - améliorer la gestion des répertoires
+      il faudrait plus facilement référencer un chemin dans l'appel de check notamment dans l'appel interactif
 journal: |
   24/1/2019:
     utilisation du mot-clé $schema à la place de jSchema
