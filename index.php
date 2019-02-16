@@ -7,8 +7,10 @@ doc: |
     - parcours interactif des fichiers json/yaml pour valider soit s'il existe par rapport à son $schema
     - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
-    - conversion interactive entre JSON et Yaml
+    - conversion interactive entre JSON, Yaml et du code Php évaluable par eval()
 journal: |
+  16/2/2019:
+    ajout possibilité de conversion interactive depuis et vers du code Php évaluable par eval()
   24/1/2019:
     utilisation du mot-clé $schema à la place de jSchema
   22/1/2019:
@@ -194,33 +196,92 @@ EOT;
   die();
 }
 
+// test si un array est un tableau associatif ou une liste,  [] n'est pas un assoc_array
+if (!function_exists('is_assoc_array')) {
+  function is_assoc_array(array $array): bool {
+    return count(array_diff_key($array, array_keys(array_keys($array))));
+  }
+}
+
+// le par. est-il une liste ? cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
+function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
+
+function asPhpSource($value, $level=0): string {
+  if (is_string($value))
+    $src = '"'.str_replace('"','\"',$value).'"';
+  if (is_numeric($value))
+    $src = (string)$value;
+  if (is_bool($value))
+    $src = $value ? 'true' : 'false';
+  if (is_null($value))
+    $src = 'null';
+  if (is_object($value) && (get_class($value)=='DateTime'))
+    $src = "new DateTime('".$value->format('Y-m-d H:i:s')."')";
+  
+  if (is_array($value)) {
+    $src = "[\n";
+    if (is_assoc_array($value)) {
+      foreach ($value as $k => $v) {
+        $src .= str_repeat('  ', $level+1)
+          .asPhpSource($k, $level+1)
+          .' => '
+          .asPhpSource($v, $level+1)
+          .(is_array($v) ? '' : ",\n");
+      }
+    }
+    else {
+      foreach ($value as $v) {
+        $src .= str_repeat('  ', $level+1)
+          .asPhpSource($v, $level+1)
+          .(is_array($v) ? '' : ",\n");
+      }
+    }
+    $src .= str_repeat('  ', $level).']'.($level ? ",\n" : '');
+  }
+  return ($level? '' : 'return ')
+    .$src
+    .($level? '' : ";\n");
+}
+
+
 if (isset($_GET['action']) && ($_GET['action']=='convi')) {
-  $text = isset($_GET['txt']) ? $_GET['txt'] : '';
-  echo <<< EOT
-<form><table border=1>
-  <tr><td><textarea name="txt" rows="20" cols="100">$text</textarea></td></tr>
+  $text = isset($_GET['txt']) ? $_GET['txt'] : (isset($_POST['txt']) ? $_POST['txt'] : '');
+  $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_POST['lang']) ? $_POST['lang'] : 'yaml');
+  echo "<form method='POST'><table border=1>
+  <tr><td><textarea name='txt' rows='20' cols='100'>$text</textarea></td></tr>
   <tr><td>lang: 
-    <input type="radio" name='lang' value='yaml' checked>Yaml
-    <input type="radio" name='lang' value='json'> JSON
+    <input type='radio' name='lang' value='yaml'",($lang=='yaml')?' checked':'',">Yaml
+    <input type='radio'' name='lang' value='json'",($lang=='json')?' checked':'',"> JSON
+    <input type='radio'' name='lang' value='php'",($lang=='php')?' checked':'',"> Php
+    <input type='radio'' name='lang' value='dump'",($lang=='dump')?' checked':'',"> dump
   </td></tr>
-<tr><td><center><input type="submit"></center></td></tr>
+<tr><td><center><input type='submit'></center></td></tr>
 <input type='hidden' name='action' value='convi'>
 </table></form>
 <a href='?'>Retour à l'accueil</a><br>
-EOT;
+";
   try {
     $doc = Yaml::parse($text, Yaml::PARSE_DATETIME);
   } catch(Exception $e) {
-    $doc = json_decode($text, true);
-    if ($doc === null) {
-      echo "Le texte n'est ni du Yaml (",$e->getMessage(),"), ni du JSON (".json_last_error_msg().").<br>\n";
-      die();
+    if (($doc = json_decode($text, true)) === null) {
+      try {
+        $doc = eval($text);
+      } catch(ParseError $e2) {
+        echo "Le texte n'est ni du Yaml (",$e->getMessage(),"),<br>",
+             "ni du JSON (",json_last_error_msg(),"),<br>",
+             "ni du Php (",$e2->getMessage(),")",
+             "<br>\n";
+        die();
+      }
     }
   }
-  if (!isset($_GET['lang']) || ($_GET['lang']=='yaml'))
-    echo '<pre>',Yaml::dump($doc, 999), "</pre>\n";
-  elseif ($_GET['lang']=='json')
-    echo '<pre>',json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), "</pre>\n";
+  switch($lang) {
+    case 'yaml': echo '<pre>',Yaml::dump($doc, 999), "</pre>\n"; break;
+    case 'php': echo '<pre>',asPhpSource($doc),"</pre>\n"; break;
+    case 'dump': echo '<pre>'; var_dump($doc); echo "</pre>\n"; break;
+    default:
+      echo '<pre>',json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), "</pre>\n";
+  }
   die();
 }
 
