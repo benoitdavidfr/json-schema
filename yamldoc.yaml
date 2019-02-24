@@ -1,0 +1,37 @@
+title: réflexions sur l'identification des classes de document dans YamlDoc
+predef:
+  http://json-schema.org/schema#: json-schema.schema.yaml
+  http://json-schema.org/draft-07/schema#: json-schema.schema.yaml
+  http://schema.georef.eu/{$path}: ./{$path}
+  http://yamldoc.georef.eu/{$path}: ./../yamldoc/{$path}
+doc: |
+  Dans un schema JSON le champ $schema contient un URI référencant le schema que le schéma en tant qu document respecte
+  ex: $schema: http://json-schema.org/draft-07/schema#
+  Dans YamlDoc j'utilise le champ yamlClass pour définir la classe et par conséquence le schéma.
+  
+  Idée: modifier YamlDoc pour utiliser un mécanisme similaire à celui utilisé par les schéma JSON.
+  au lieu de:
+    yamlClass: YData
+  utiliser:
+    $schema: http://ydclasses.georef.eu/YData
+    
+  L'avantage de cette URI est à la fois:
+    - d'être compatible avec les predefs de JsonSchema
+    - de pouvoir facilement être résolu (sans que ce soit le cas actuellement)
+    
+  De même, pour l'utilisation de jSchema dans JsonSchema.
+  jSchema référence le schéma du document courant.
+  Il n'y a pas de raison de ne pas utiliser $schema
+  au lieu de:
+    jSchema:
+      $schema: http://json-schema.org/draft-07/schema#
+      $ref: http://localhost/schema/geojson/featurecollection.schema.yaml
+  utiliser:
+    $schema: http://schema.georef.eu/geojson/featurecollection
+  
+  Il existe cependant une différence pour YData
+    jSchema est défini dans la table et définit le schéma des éléments de cette table
+    c'est assez logique dans ce contexte mais il ne faudrait pas lui donner le même nom
+    par ex rowSchema
+
+

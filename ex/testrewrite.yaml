@@ -1,0 +1,58 @@
+title: test de JsonSch::predef()
+description: tests des règles de réécriture définies dans predef.yaml et exploitées dans JsonSch::predef()
+$schema: http://json-schema.org/draft-07/schema#
+$id: testrewrite
+type: object
+required: [title]
+properties:
+  title:
+    type: string
+  fc:
+    $ref: http://geojson.org/schema/FeatureCollection.json
+  geom:
+    $ref: http://schema.georef.eu/geojson/geometry.schema.yaml
+  doc:
+    $ref: http://id.georef.eu/dublincore.schema
+  doc2:
+    $ref: http://bdavid.alwaysdata.net/yamldoc/id.php/dublincore.schema
+  yd:
+    $ref: http://ydclasses.georef.eu/YamlDoc/schema
+examples:
+  - title: exemple conforme
+    fc:
+      type: FeatureCollection
+      features:
+        - type: Feature
+          properties:
+          geometry:
+            type: Point
+            coordinates: [0, 0]
+    geom:
+      type: Point
+      coordinates: [0, 0]
+    doc:
+      title: titre DublinCore
+    doc2:
+      title: titre DublinCore
+    yd:
+      title: titre YamlDoc
+      authorizedReaders: [benoit]
+  - title: exemple non conforme
+    fc:
+      type: FeatureCollection
+      features:
+        - type: Feature
+          properties:
+          geometry:
+            type: LineString
+            coordinates: [0, 0]
+    geom:
+      type: MultiPoint
+      coordinates: [0, 0]
+    doc:
+      title: { x: y }
+    doc2:
+      title: { x: y }
+    yd:
+      title: titre YamlDoc
+      authorizedReaders: benoit

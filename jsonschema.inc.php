@@ -17,6 +17,8 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  24/2/2019:
+    modification des règles de récriture dans JsonSch::predef()
   5-8/2/2019:
     ajout de la possibilité dans JsonSch::file_get_contents d'exécuter un fichier Php renvoyant un array Php
   26/1/2019:
@@ -136,10 +138,10 @@ class JsonSch {
     //echo (isset(self::$predefs[$path]) ? "remplacé par: ".__DIR__.'/'.self::$predefs[$path] : "absent"),"<br>\n";
     if (isset(self::$predefs[$path]))
       return __DIR__.'/'.self::$predefs[$path];
-    foreach (self::$patterns as $pattern => $prefix) {
-      if (preg_match("!$pattern!", $path)) {
-        $path2 = preg_replace("!$pattern!", $prefix['localPath'], $path, 1);
-        //echo "remplacé par: ".__DIR__.$path2,"<br>\n";
+    foreach (self::$patterns as $pattern => $replacement) {
+      if (preg_match("!$pattern!", $path, $matches)) {
+        $path2 = preg_replace("!$pattern!", $replacement['localPath'], $path, 1);
+        echo "remplacé par: ".__DIR__.$path2,"<br>\n";
         return __DIR__.$path2;
       }
     }

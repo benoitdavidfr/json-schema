@@ -206,19 +206,21 @@ if (!function_exists('is_assoc_array')) {
 // le par. est-il une liste ? cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
 function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
 
+// fabrique une chaine de code Php correspondant à une valeur issu d'un parse Yaml
+// cette chaine doit pouvoir être évaluée en Php par eval()
 function asPhpSource($value, $level=0): string {
   if (is_string($value))
     $src = '"'.str_replace('"','\"',$value).'"';
-  if (is_numeric($value))
+  elseif (is_numeric($value))
     $src = (string)$value;
-  if (is_bool($value))
+  elseif (is_bool($value))
     $src = $value ? 'true' : 'false';
-  if (is_null($value))
+  elseif (is_null($value))
     $src = 'null';
-  if (is_object($value) && (get_class($value)=='DateTime'))
+  elseif (is_object($value) && (get_class($value)=='DateTime'))
     $src = "new DateTime('".$value->format('Y-m-d H:i:s')."')";
   
-  if (is_array($value)) {
+  elseif (is_array($value)) {
     $src = "[\n";
     if (is_assoc_array($value)) {
       foreach ($value as $k => $v) {
