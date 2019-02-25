@@ -5,7 +5,7 @@ abstract: |
   par un chemin local.
   Ces remplacements sont effectués par la méthode statique JsonSch::predef(string): string
   qui peut être utilisée en dehors du contexte d'un schéma.
-modified: '2019-01-26'
+modified: '2019-02-24'
 $schema:
   $id: http://schema.georef.eu/predef.yaml#/$schema
   $schema: http://json-schema.org/draft-07/schema#
@@ -64,7 +64,7 @@ patterns:
     localPath: ''
   ^http://id.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace public de YamlDoc
     localPath: /../yamldoc/pub/$1.yaml
-  ^http://bdavid.alwaysdata.net/yamldoc/id.php/(.+)$: # correspond au répertoire des documents de l'espace privé
+  ^http://docs.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace privé de YamlDoc
     localPath: /../yamldoc/docs/$1.yaml
   ^http://ydclasses.georef.eu/([^/]+)/schema$: # correspond au répertoire des documents de l'espace privé de YamlDoc
     localPath: /../yamldoc/ydclasses/$1.sch.yaml

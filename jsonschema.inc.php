@@ -141,8 +141,14 @@ class JsonSch {
     foreach (self::$patterns as $pattern => $replacement) {
       if (preg_match("!$pattern!", $path, $matches)) {
         $path2 = preg_replace("!$pattern!", $replacement['localPath'], $path, 1);
-        echo "remplacé par: ".__DIR__.$path2,"<br>\n";
-        return __DIR__.$path2;
+        //echo "remplacé par: ".__DIR__.$path2,"<br>\n";
+        if (is_file(__DIR__.$path2))
+          return __DIR__.$path2;
+        elseif ((substr($path2, -5)=='.yaml')
+           && ($path3 = substr($path2, 0, strlen($path2)-5).'.php') && is_file(__DIR__.$path3))
+             return __DIR__.$path3;
+        else
+          throw new Exception("neither $path2 nor $path3 is a file");
       }
     }
     return $path;
