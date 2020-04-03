@@ -10,8 +10,10 @@ journal: |
     utilisation du mot-clé $schema à la place de jSchema
   1-18/1/2019
     première version
+includes:
+  - jsonschema.inc.php
 */
-require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';

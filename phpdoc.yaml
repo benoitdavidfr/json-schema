@@ -8,10 +8,11 @@ doc: |
     Le mot-clé est utilisé dans un schema JSON pour identifier le schéma auquel le document correspond
     J'étends cette utilisation en utilisant ce mot-clé dans n'importe quel document Yaml ou JSON
     soit pour référencer son schéma soit pour contenir en ligne le schéma sous la forme d'un fragment
-    Lorsqu'un schéma est référencé, le nom ne doit pas comporter .schema.yaml qui est automatiquement ajouté
-     
+  
   Mécanisme de registre de schéma:
-    J'utilise l'URI http://{name}.georef.eu/ pour identifier et localiser des schémas locaux
+    J'utilise le motif d'URI http://{name}.georef.eu/ pour identifier et localiser des schémas locaux
+    Les mécanismes de transformation d'URL sont définis dans JsonSch::predef() et predef.yaml
+    
     Les URI de la forme http://schema.georef.eu/{path} sont transformés en __DIR__./{path}
     Ceux de la forme http://{name}.georef.eu/ sont transformés en __DIR__./../{name}/{path}
     Par ailleurs, je définis un certain nombre de schémas stockés en local tels que:

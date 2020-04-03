@@ -27,8 +27,11 @@ journal: |
     ajout navigation dans les répertoires
   1/1/2019
     première version
+includes:
+  - jsonschema.inc.php
 */
-require_once __DIR__.'/../vendor/autoload.php';
+ini_set('memory_limit', '512M');
+require_once __DIR__.'/vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 require_once __DIR__.'/jsonschema.inc.php';
@@ -277,13 +280,15 @@ if (isset($_GET['action']) && ($_GET['action']=='convi')) {
       }
     }
   }
+  echo '<pre>';
   switch($lang) {
-    case 'yaml': echo '<pre>',Yaml::dump($doc, 999), "</pre>\n"; break;
-    case 'php': echo '<pre>',asPhpSource($doc),"</pre>\n"; break;
-    case 'dump': echo '<pre>'; var_dump($doc); echo "</pre>\n"; break;
+    case 'yaml': echo Yaml::dump($doc, 999); break;
+    case 'php': echo asPhpSource($doc); break;
+    case 'dump': var_dump($doc); break;
     default:
-      echo '<pre>',json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE), "</pre>\n";
+      echo json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
   }
+  echo "</pre>\n";
   die();
 }
 

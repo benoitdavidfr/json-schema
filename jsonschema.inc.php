@@ -75,8 +75,10 @@ journal: |
     ajout patternProperties et test sur http://localhost/yamldoc/?doc=dublincoreyd&ypath=%2Ftables%2Fdcmes%2Fdata
   1/1/2019
     première version
+includes:
+  - jsonschfrt.inc.php
 */
-require_once __DIR__.'/../vendor/autoload.php';
+require_once __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/jsonschfrt.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -278,7 +280,7 @@ class JsonSchema {
       echo "JsonSchema::_construct(def=",json_encode($def),",",
            " parent->filepath=",$parent?$parent->filepath:'none',")<br>\n";
     $this->status = new JsonSchStatus;
-    if (is_string($def)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
+    if (is_string($def)) { // le paramètre $def est le chemin du fichier contenant l'objet JSON
       $def = JsonSch::predef($def); // remplacement des chemins prédéfinis par leur équivalent local
       if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
         throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
