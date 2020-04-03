@@ -62,9 +62,9 @@ predefs:
 patterns:
   ^http://schema.georef.eu: # correspond au répertoire de jsonschema.inc.php
     localPath: ''
-  ^http://id.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace public de YamlDoc
-    localPath: /../yamldoc/pub/$1.yaml
-  ^http://docs.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace privé de YamlDoc
-    localPath: /../yamldoc/docs/$1.yaml
   ^http://ydclasses.georef.eu/([^/]+)/schema$: # correspond au répertoire des documents de l'espace privé de YamlDoc
     localPath: /../yamldoc/ydclasses/$1.sch.yaml
+  ^xxxhttp://id.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace public de YamlDoc
+    localPath: /../yamldoc/pub/$1.yaml
+  ^xxxhttp://docs.georef.eu/(.+)$: # correspond au répertoire des documents de l'espace privé de YamlDoc
+    localPath: /../yamldoc/docs/$1.yaml

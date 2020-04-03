@@ -13,9 +13,14 @@ doc: |
     J'utilise le motif d'URI http://{name}.georef.eu/ pour identifier et localiser des schémas locaux
     Les mécanismes de transformation d'URL sont définis dans JsonSch::predef() et predef.yaml
     
-    Les URI de la forme http://schema.georef.eu/{path} sont transformés en __DIR__./{path}
-    Ceux de la forme http://{name}.georef.eu/ sont transformés en __DIR__./../{name}/{path}
-    Par ailleurs, je définis un certain nombre de schémas stockés en local tels que:
+      Les URI de la forme http://schema.georef.eu/{path} sont transformés en __DIR__./{path}
+      Ceux de la forme http://ydclasses.georef.eu/{name}/schema
+                         sont transformés en __DIR__./../yamldoc/ydclasses/{name}.sch.yaml
+    Par ailleurs:
+      Les URI de la forme http://id.georef.eu/{path} référencent le fragment {path} du store pub de YamlDoc
+      Ceux de la forme  http://docs.georef.eu/{path} référencent le fragment {path} du store docs de YamlDoc
+
+    Enfin, je définis un certain nombre de schémas stockés en local tels que:
       - http://json-schema.org/schema# (Core schema meta-schema)
       - http://json-schema.org/draft-07/schema# (idem)
       - http://geojson.org/schema/FeatureCollection.json (schema GeoJSON)
@@ -25,6 +30,8 @@ doc: |
     - améliorer la gestion des répertoires
       il faudrait plus facilement référencer un chemin dans l'appel de check notamment dans l'appel interactif
 journal: |
+  3/4/2020:
+    git commit avant modifications
   24/1/2019:
     utilisation du mot-clé $schema à la place de jSchema
   19/1/2019:

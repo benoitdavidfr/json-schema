@@ -17,6 +17,10 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  3/4/2020:
+    modification du mécanisme de registre de schéma
+    Les URI en http://id.georef.eu/ et http://docs.georef.eu/ ne sont pas réécrites dans JsonSch::predef()
+    mais traitées par JsonSch::deref() en faisant appel à getFragmentFromPath() définie dans YamlDoc
   24/2/2019:
     modification des règles de récriture dans JsonSch::predef()
   5-8/2/2019:
@@ -164,6 +168,10 @@ class JsonSch {
       return $def;
     $path = self::predef($def['$ref']);
     //echo "path après predef: $path<br>\n";
+    if (preg_match('!^http://id.georef.eu/!', $path))
+      return getFragmentFromPath('pub', $path);
+    if (preg_match('!^http://docs.georef.eu/!', $path))
+      return getFragmentFromPath('docs', $path);
     if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)(#(.*))?$!', $path, $matches))
       throw new Exception("Chemin $path non compris dans JsonSch::deref()");
     $filepath = $matches[1]; // partie avant #
@@ -198,7 +206,7 @@ class JsonSch {
   // récupère le contenu d'un fichier JSON ou Yaml ou exécute un fichier Php renvoyant un array Php
   // retourne un array Php ou en cas d'erreur génère une exception
   static function file_get_contents(string $path): array {
-    //echo "jsonfile_get_contents(path=$path)<br>\n";
+    //echo "JsonSch::file_get_contents(path=$path)<br>\n";
     if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
     if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
