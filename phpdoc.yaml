@@ -19,6 +19,7 @@ doc: |
     Par ailleurs:
       Les URI de la forme http://id.georef.eu/{path} référencent le fragment {path} du store pub de YamlDoc
       Ceux de la forme  http://docs.georef.eu/{path} référencent le fragment {path} du store docs de YamlDoc
+      Le déréférencement est effectué sur l'instance sur laquelle s'exécute le code.
 
     Enfin, je définis un certain nombre de schémas stockés en local tels que:
       - http://json-schema.org/schema# (Core schema meta-schema)
@@ -32,6 +33,7 @@ doc: |
 journal: |
   3/4/2020:
     git commit avant modifications
+    amélioration du mécanisme de registre de schéma
   24/1/2019:
     utilisation du mot-clé $schema à la place de jSchema
   19/1/2019:
@@ -52,7 +54,7 @@ phpScripts:
   - /schema/tests.php
 phpIncludes:
   - /schema/jsonschema.inc.php
-  - /schema/jsonschfrt.inc.php
+  - /schema/jsonschfrg.inc.php
 htmlFiles:
   - /schema/json-schema.schema.yaml
   - /schema/tests.schema.yaml

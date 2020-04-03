@@ -1,10 +1,12 @@
 <?php
 /*PhpDoc:
-name: jsonschfrt.inc.php
-title: jsonschfrt.inc.php - définition de la classe JsonSchFragment utilisée par le validateur de schéma JSON
+name: jsonschfrg.inc.php
+title: jsonschfrg.inc.php - définition de la classe JsonSchFragment utilisée par le validateur de schéma JSON
 classes:
 doc: |
 journal: |
+  3/4/2020:
+    chgt de nom du fichier
   8/2/2019:
     JsonSchFragment est utilisée en dehors de la classe JsonSchema
   24/1/2019:
@@ -20,6 +22,9 @@ use Symfony\Component\Yaml\Exception\ParseException;
 /*PhpDoc: classes
 name: JsonSchFragment
 title: class JsonSchFragment - classe utilisée par JsonSchema définissant un fragment d'un schema JSON
+doc: |
+  Un JsonSchFragment correspond à un fragment d'un schéma ; il connait son schéma père
+  afin d'être capable pour retrouver une définition définie en relatif dans son schéma père
 */
 class JsonSchFragment {
   const RFC3339_EXTENDED = 'Y-m-d\TH:i:s.vP'; // DateTimeInterface::RFC3339_EXTENDED
@@ -86,7 +91,7 @@ class JsonSchFragment {
     if (!$status)
       $status = new JsonSchStatus;
     if ($this->verbose)
-      echo "check(instance=",json_encode($instance),", id=$id)@def=$this<br><br>\n";
+      echo "JsonSchFragment::check(instance=",json_encode($instance),", id=$id)@def=$this<br><br>\n";
     if (is_bool($this->def))
       return $this->def ? $status : $status->setError("Schema faux pour $id");
     if (!is_array($this->def))
@@ -138,8 +143,8 @@ class JsonSchFragment {
       $content = JsonSch::subElement($this->schema->def(), $eltpath);
       if (!$content) {
         if ($this->verbose)
-          echo "<b>Erreur $eltpath non trouvé</b><br>\n";
-        return $status->setError("Erreur $eltpath non trouvé");
+          echo "<b>Erreur eltpath $eltpath non trouvé</b><br>\n";
+        return $status->setError("Erreur eltpath $eltpath non trouvé");
       }
       $schemaElt = new self($content, $this->schema, $this->verbose);
       return $schemaElt->check($instance, $id, $status);

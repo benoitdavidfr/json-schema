@@ -83,7 +83,7 @@ includes:
   - jsonschfrt.inc.php
 */
 require_once __DIR__.'/vendor/autoload.php';
-require_once __DIR__.'/jsonschfrt.inc.php';
+require_once __DIR__.'/jsonschfrg.inc.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
@@ -121,7 +121,7 @@ class JsonSch {
   // remplace les chemins prédéfinis par leur équivalent local
   // utilise le fichier predef.yaml chargé dans self::$predefs et self::$patterns
   // si aucun remplacement, renvoie le path initial
-  static function predef(string $path): ?string {
+  static function predef(string $path): string {
     //echo "predef(path=$path)<br>\n";
     if (self::$predefs === null) {
       if (($txt = @file_get_contents(__DIR__.'/predef.yaml')) === false)
@@ -168,10 +168,6 @@ class JsonSch {
       return $def;
     $path = self::predef($def['$ref']);
     //echo "path après predef: $path<br>\n";
-    if (preg_match('!^http://id.georef.eu/!', $path))
-      return getFragmentFromPath('pub', $path);
-    if (preg_match('!^http://docs.georef.eu/!', $path))
-      return getFragmentFromPath('docs', $path);
     if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)(#(.*))?$!', $path, $matches))
       throw new Exception("Chemin $path non compris dans JsonSch::deref()");
     $filepath = $matches[1]; // partie avant #
@@ -207,6 +203,8 @@ class JsonSch {
   // retourne un array Php ou en cas d'erreur génère une exception
   static function file_get_contents(string $path): array {
     //echo "JsonSch::file_get_contents(path=$path)<br>\n";
+    if (preg_match('!^http://(id|docs).georef.eu/!', $path))
+      return getFragmentFromUri($path);
     if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
     if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
@@ -286,7 +284,7 @@ class JsonSchema {
     $this->verbose = $verbose;
     if ($verbose)
       echo "JsonSchema::_construct(def=",json_encode($def),",",
-           " parent->filepath=",$parent?$parent->filepath:'none',")<br>\n";
+           " parent->filepath=",$parent ? $parent->filepath : 'none',")<br>\n";
     $this->status = new JsonSchStatus;
     if (is_string($def)) { // le paramètre $def est le chemin du fichier contenant l'objet JSON
       $def = JsonSch::predef($def); // remplacement des chemins prédéfinis par leur équivalent local
@@ -373,7 +371,7 @@ class JsonSchema {
   
   /*PhpDoc: methods
   name: check
-  title: "check($instance, array $options=[], string $id='', JsonSchStatus $status=null): JsonSchStatus - validation de conformité d'une instance au JsonSchema, renvoit un JsonSchStatus"
+  title: "check($instance, array $options=[], string $id='', ?JsonSchStatus $status=null): JsonSchStatus - validation de conformité d'une instance au JsonSchema, renvoit un JsonSchStatus"
   doc: |
     Un check() prend un statut initial et le modifie pour le renvoyer à la fin
      - le premier paramètre est l'instance à valider comme valeur Php
