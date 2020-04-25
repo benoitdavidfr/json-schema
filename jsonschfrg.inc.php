@@ -5,6 +5,8 @@ title: jsonschfrg.inc.php - définition de la classe JsonSchFragment utilisée p
 classes:
 doc: |
 journal: |
+  25/4/2020:
+    ajout vérification de la contrainte enum pour un object, un array et un numberOrInteger en plus du string
   3/4/2020:
     chgt de nom du fichier
   8/2/2019:
@@ -281,6 +283,10 @@ class JsonSchFragment {
     if (!is_array($instance) || ($instance && !is_assoc_array($instance)))
       return $status;
     
+    // vérification du respect de l'enum
+    if (isset($this->def['enum']) && !in_array($instance, $this->def['enum']))
+      $status->setError("Erreur $id not in enum=".JsonSch::encode($this->def['enum']));
+    
     // vérification que les propriétés obligatoires sont définies
     if (isset($this->def['required'])) {
       foreach ($this->def['required'] as $prop) {
@@ -356,6 +362,10 @@ class JsonSchFragment {
     if (!is_array($instance) || is_assoc_array($instance))
       return $status;
     
+    // vérification du respect de l'enum
+    if (isset($this->def['enum']) && !in_array($instance, $this->def['enum']))
+      $status->setError("Erreur $id not in enum=".JsonSch::encode($this->def['enum']));
+    
     if (isset($this->def['minItems']) && (count($instance) < $this->def['minItems'])) {
       $nbre = count($instance);
       $minItems = $this->def['minItems'];
@@ -425,6 +435,11 @@ class JsonSchFragment {
   private function checkNumberOrInteger(string $id, $number, JsonSchStatus $status): JsonSchStatus {
     if (!is_numeric($number))
       return $status;
+    
+    // vérification du respect de l'enum
+    if (isset($this->def['enum']) && !in_array($instance, $this->def['enum']))
+      $status->setError("Erreur $id not in enum=".JsonSch::encode($this->def['enum']));
+
     if (isset($this->def['minimum']) && ($number < $this->def['minimum']))
       $status = $status->setError("Erreur $id=$number < minimim = ".$this->def['minimum']);
     if (isset($this->def['exclusiveMinimum']) && ($number <= $this->def['exclusiveMinimum']))

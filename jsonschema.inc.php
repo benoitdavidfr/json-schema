@@ -80,7 +80,7 @@ journal: |
   1/1/2019
     première version
 includes:
-  - jsonschfrt.inc.php
+  - jsonschfrg.inc.php
 */
 require_once __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/jsonschfrg.inc.php';

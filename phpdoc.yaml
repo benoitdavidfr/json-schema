@@ -26,11 +26,17 @@ doc: |
       - http://json-schema.org/draft-07/schema# (idem)
       - http://geojson.org/schema/FeatureCollection.json (schema GeoJSON)
       
+  synchro:
+    - title: synchro sur http://bdavid.alwaysdata.net/ et http://georef.eu/
+      href: http://localhost/synchro.php?remote=http://bdavid.alwaysdata.net/&dir=schema
+      
   A FAIRE:
     - améliorer les alertes
     - améliorer la gestion des répertoires
       il faudrait plus facilement référencer un chemin dans l'appel de check notamment dans l'appel interactif
 journal: |
+  25/4/2020:
+    ajout vérification de la contrainte enum pour un object, un array et un numberOrInteger en plus du string
   3/4/2020:
     git commit avant modifications
     amélioration du mécanisme de registre de schéma
