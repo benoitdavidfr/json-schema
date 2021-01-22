@@ -1,0 +1,30 @@
+title: test de contains
+$schema:
+  $schema: 'http://json-schema.org/draft-06/schema#'
+  type: object
+  properties:
+    title:
+      type: string
+    withInt:
+      type: array
+      items:
+        description: un array qui contient au moins un entier
+        type: array
+        contains:
+          type: integer
+    withObjects:
+      type: array
+      items:
+        description: un array qui contient au moins un objet {label: string}
+        type: array
+        contains:
+          type: object
+          properties:
+            label:
+              type: string
+withInt:
+  - [1.2, 2, 2.3]
+  - [1.2, 2.3]
+withObjects:
+  - [1, {label: étiquette}, 3]
+  - [1.2, 2, 2.3]

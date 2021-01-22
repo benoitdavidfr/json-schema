@@ -1,13 +1,15 @@
 <?php
 /*PhpDoc:
 name: jsonschema.inc.php
-title: jsonschema.inc.php - validation de la conformité d'un objet Php à un schéma JSON
+title: jsonschema.inc.php - validation de la conformité d'une instance Php à un schéma JSON
 classes:
 doc: |
-  Pour valider la conformité d'un objet Php à un schéma, il faut:
+  Pour valider la conformité d'une instance définie comme valeur Php à un schéma, il faut:
     - créer un objet JsonSchema en fournissant le contenu du schema sous la forme d'un array Php
     - appeler sur cet objet la méthode check avec l'instance Php à vérifier
-    - analyser le statut retourné (classe JsonSch Status) par cette vérification
+    - analyser le statut retourné (classe JsonSchStatus) par cette vérification
+  Une autre possibilité pour les documents définissant leur schéma est d'utiliser la méthode statique
+    JsonSchema::autoCheck() qui prend en paramètre une instance et retourne un JsonSchStatus
   voir https://json-schema.org/understanding-json-schema/reference/index.html (draft-06)
   La classe est utilisée avec des valeurs Php
   3 types d'erreurs sont gérées:
@@ -17,14 +19,20 @@ doc: |
   Lorsque le schéma est conforme au méta-schéma, la génération d'une exception correspond à un bug du code.
   Ce validateur implémente la spec http://json-schema.org/draft-06/schema# en totalité.
 journal: |
+  22/1/2021:
+    - passage à Php 8
+    - redéfinition de la logique de tests élémentaires
+    - JsonSchema::autocheck() transmet le répertoire du doc au schéma
+  5/11/2020:
+    ajout constructeur sur JsonSchStatus pour permettre une initialisation non vide
   3/4/2020:
     modification du mécanisme de registre de schéma
     Les URI en http://id.georef.eu/ et http://docs.georef.eu/ ne sont pas réécrites dans JsonSch::predef()
     mais traitées par JsonSch::deref() en faisant appel à getFragmentFromPath() définie dans YamlDoc
   24/2/2019:
-    modification des règles de récriture dans JsonSch::predef()
+    modification des règles de réécriture dans JsonSch::predef()
   5-8/2/2019:
-    ajout de la possibilité dans JsonSch::file_get_contents d'exécuter un fichier Php renvoyant un array Php
+    ajout de la possibilité dans JsonSch::file_get_contents() d'exécuter un script Php renvoyant un array Php
   26/1/2019:
     modification dans JsonSchema::autoCheck() du cas ou on ajoute .schema.yaml au nom du fichier du schéma
   24/1/2019:
@@ -66,7 +74,7 @@ journal: |
     début de correction
     quand on a une hiérarchie de schéma, dans lequel chercher une définition ?
     a priori je prenais la racine mais ce n'est pas toujours le cas
-    solution: distinuer les vrai schémas des pseudo-schémas qui sont des parties d'un schéma
+    solution: distinguer les vrai schémas des pseudo-schémas qui sont des parties d'un schéma
   3/1/2019
     les fonctions complémentaires ne sont définies que si elles ne le sont pas déjà
     correction bug
@@ -84,30 +92,137 @@ includes:
 */
 require_once __DIR__.'/vendor/autoload.php';
 require_once __DIR__.'/jsonschfrg.inc.php';
+
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
 
 // test si un array est un tableau associatif ou une liste
+// Une liste est définie comme ayant pour clés les n premiers entiers, n étant la longueur de la liste.
+// Un array qui n'est pas une liste est un tableau associatif.
+// [] est considérée comme une liste et donc pas un tableau associatif
 if (!function_exists('is_assoc_array')) {
-  function is_assoc_array(array $array): bool { return count(array_diff_key($array, array_keys(array_keys($array)))); }
-  function is_assoc_arrayC(array $array): bool { // Appel de is_assoc_array commenté 
+  function is_assoc_array(array $array): bool {
+    return count(array_diff_key($array, array_keys(array_keys($array))));
+  }
+  
+  function is_assoc_arrayC(array $array): void { // Appel de is_assoc_array commenté 
     print_r($array);
-    $r = is_assoc_array($array);
-    echo $r ? 'is_assoc_array' : '<b>! is_assoc_array</b>', "<br>\n";
-    return $r;
+    echo Yaml::dump($array);
+    echo is_assoc_array($array) ? 'is_assoc_array' : '<b>! is_assoc_array</b>', "<br>\n";
   }
 
-  if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de is_assoc_array 
-    if (isset($_GET['test']) && ($_GET['test']=='is_assoc_array')) {
-      echo "Test is_assoc_array<br>\n";
-      is_assoc_arrayC([1, 5]);
-      is_assoc_arrayC([1=>1, 5=>5]);
-      is_assoc_arrayC([1=>1, 5=>5, 7=>7]);
-      echo "FIN test is_assoc_array<br><br>\n";
-    }
-    $unitaryTests[] = 'is_assoc_array';
+  function test_is_assoc_array() { // Test unitaire de is_assoc_array 
+    echo "<pre>Test is_assoc_array()<br>\n";
+    is_assoc_arrayC([1, 5]);
+    is_assoc_arrayC([1=>1, 0=>5]);
+    is_assoc_arrayC([1=>1, 5=>5]);
+    is_assoc_arrayC([1=>1, 5=>5, 7=>7]);
+    is_assoc_arrayC([]);
+    die("FIN test is_assoc_array\n");
+  }
+  
+  if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) {
+    if (!isset($_GET['test']))
+      echo "<a href='?test=is_assoc_array'>Test de la fonction is_assoc_array()</a><br>\n";
+    elseif ($_GET['test']=='is_assoc_array')
+      test_is_assoc_array();
   }
 }
+
+/*PhpDoc: classes
+name: JsonSchStatus
+title: class JsonSchStatus - définit un statut de vérification de conformité d'une instance
+methods:
+doc: |
+  La classe JsonSchStatus définit le statut d'une vérification de conformité d'une instance
+  Un objet de cette classe est retourné par une vérification.
+  La conformité de l'instance au schéma peut être testée et les erreurs et alertes peuvent être fournies
+
+  Les erreurs recensées sont organisées sous la forme d'une liste soit de chaines, soit de groupes d'erreurs
+  Un groupe d'erreurs correspond à une erreur sur un oneOf
+  C'est une structure avec un label et comme children une liste de listes de chaines
+  Le premier niveau de liste correspond aux possibilités de choix de schéma
+  Le second à la liste des erreurs retournées en traitant ce choix
+  exemple: http://localhost/schema/?schema=geojson%2Fgeometry.schema.yaml&instance=type%3A+LineString%0D%0Acoordinates%3A+%5B1%2C+2%5D&action=fchoice
+*/
+class JsonSchStatus {
+  private array $warnings; // liste des warnings
+  private array $errors; // erreurs dans l'instance [string|{label: string, children: [errors]}]
+  
+  function __construct(array $errors=[], array $warnings=[]) {
+    $this->errors = $errors;
+    $this->warnings = $warnings;
+  }
+  
+  function __toString(): string {
+    return Yaml::dump([['Errors'=>$this->errors, 'Warnings'=> $this->warnings], 999]);
+    /*$s = '';
+    if ($this->errors)
+      $s .= '<pre><b>'.Yaml::dump(['Errors'=>$this->errors], 999)."</b></pre>\n";
+    if ($this->warnings)
+      $s .= '<pre><i>'.Yaml::dump(['Warnings'=> $this->warnings], 999)."</i></pre>";
+    return $s;*/
+  }
+  
+  // ajoute une erreur, retourne $this
+  function setError(string $message): self { $this->errors[] = $message; return $this; }
+  
+  // ajoute une branche d'erreurs, retourne $this
+  function setErrorBranch(string $message, array $statusArray): self {
+    $children = [];
+    foreach ($statusArray as $status2)
+      $children[] = $status2->errors;
+    $this->errors[] = ['label'=> $message, 'children'=> $children];
+    return $this;
+  }
+  
+  /*PhpDoc: methods
+  name: ok
+  title: "ok(): bool - true ssi pas d'erreur"
+  */
+  function ok(): bool { return count($this->errors)==0; }
+  
+  /*PhpDoc: methods
+  name: errors
+  title: "errors(): array - retourne les erreurs"
+  */
+  function errors(): array { return $this->errors; }
+  
+  /*PhpDoc: methods
+  name: showErrors
+  title: "showErrors(): void - affiche les erreurs"
+  */
+  function showErrors(string $message=''): void {
+    if ($this->errors)
+      echo $message,'<pre><b>',Yaml::dump(['Errors'=>$this->errors], 999),"</b></pre>\n";
+  }
+  
+  // ajoute un warning
+  function setWarning(string $message): void { $this->warnings[] = $message; }
+  
+  /*PhpDoc: methods
+  name: warnings
+  title: "warnings(): array - retourne les alertes"
+  */
+  function warnings(): array { return $this->warnings; }
+  
+  /*PhpDoc: methods
+  name: showWarnings
+  title: "showWarnings(): void - affiche les warnings"
+  */
+  function showWarnings(string $message=''): void {
+    echo $message;
+    if ($this->warnings)
+      echo '<pre><i>',Yaml::dump(['Warnings'=> $this->warnings], 999),"</i></pre>";
+  }
+  
+  // ajoute à la fin du statut courant le statut en paramètre et renvoie le statut courant
+  function append(JsonSchStatus $toAppend): JsonSchStatus {
+    $this->warnings = array_merge($this->warnings, $toAppend->warnings);
+    $this->errors = array_merge($this->errors, $toAppend->errors);
+    return $this;
+  }
+};
 
 /*PhpDoc: classes
 name: JsonSch
@@ -115,31 +230,30 @@ title: class JsonSch - classe statique portant qqs méthodes statiques
 methods:
 */
 class JsonSch {
-  static $predefs=null; // dictionnaire [ {predef} => {local} ] utilisé par self::predef()
-  static $patterns=null; // dictionnaire [ {pattern} => {local} ] utilisé par self::predef()
+  static array $predefs=[]; // dictionnaire [ {predef} => {local} ] utilisé par self::predef()
+  static array $patterns=[]; // dictionnaire [ {pattern} => {local} ] utilisé par self::predef()
   
   // remplace les chemins prédéfinis par leur équivalent local
   // utilise le fichier predef.yaml chargé dans self::$predefs et self::$patterns
   // si aucun remplacement, renvoie le path initial
   static function predef(string $path): string {
     //echo "predef(path=$path)<br>\n";
-    if (self::$predefs === null) {
+    if (!self::$predefs) {
       if (($txt = @file_get_contents(__DIR__.'/predef.yaml')) === false)
         throw new Exception("ouverture impossible du fichier predef.yaml");
       try {
-        $predefs = Yaml::parse($txt, Yaml::PARSE_DATETIME);
+        $yaml = Yaml::parse($txt, Yaml::PARSE_DATETIME);
       }
       catch (Exception $e) {
-        throw new Exception("Décodage Yaml du fichier predef.yaml incorrect: ".$e->getMessage());
+        throw new Exception("Analyse Yaml du fichier predef.yaml incorrect: ".$e->getMessage());
       }
-      self::$predefs = [];
-      foreach ($predefs['predefs'] as $id => $predef) {
+      foreach ($yaml['predefs'] as $id => $predef) {
         self::$predefs[$id] = $predef['localPath'];
-        if (isset($predef['aliases']))
-          foreach ($predef['aliases'] as $alias)
+        if (isset($yaml['aliases']))
+          foreach ($yaml['aliases'] as $alias)
             self::$predefs[$alias] = $predef['localPath'];
       }
-      self::$patterns = $predefs['patterns'];
+      self::$patterns = $yaml['patterns'];
     }
     //echo (isset(self::$predefs[$path]) ? "remplacé par: ".__DIR__.'/'.self::$predefs[$path] : "absent"),"<br>\n";
     if (isset(self::$predefs[$path]))
@@ -199,12 +313,22 @@ class JsonSch {
     return $result;
   }
  
+  static function test_subElement() {
+    echo "Test subElement<br>\n";
+    $object = ['a'=>'a', 'b'=> ['c'=> 'bc', 'd'=> ['e'=> 'bde']]];
+    JsonSch::subElementC($object, '/b');
+    JsonSch::subElementC($object, '/b/d');
+    JsonSch::subElementC($object, '/x');
+    JsonSch::subElementC($object, '/a');
+    die("FIN test subElement<br><br>\n");
+  }
+  
   // récupère le contenu d'un fichier JSON ou Yaml ou exécute un fichier Php renvoyant un array Php
   // retourne un array Php ou en cas d'erreur génère une exception
   static function file_get_contents(string $path): array {
     //echo "JsonSch::file_get_contents(path=$path)<br>\n";
     if (preg_match('!^http://(id|docs).georef.eu/!', $path))
-      return getFragmentFromUri($path);
+      return getFragmentFromUri($path); // ????
     if (($txt = @file_get_contents($path)) === false)
       throw new Exception("ouverture impossible du fichier $path");
     if ((substr($path, -5)=='.yaml') || (substr($path, -4)=='.yml')) {
@@ -212,7 +336,7 @@ class JsonSch {
         return Yaml::parse($txt, Yaml::PARSE_DATETIME);
       }
       catch (Exception $e) {
-        throw new Exception("Décodage Yaml du fichier $path incorrect: ".$e->getMessage());
+        throw new Exception("Analyse Yaml du fichier $path incorrect: ".$e->getMessage());
       }
     }
     elseif (substr($path, -5)=='.json') {
@@ -244,6 +368,13 @@ class JsonSch {
   }
 };
 
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSch::subElement  
+  if (!isset($_GET['test']))
+    echo "<a href='?test=JsonSch::subElement'>Test de JsonSch::subElement()</a><br>\n";
+  elseif ($_GET['test']=='JsonSch::subElement')
+    JsonSch::test_subElement();
+}
+
 /*PhpDoc: classes
 name: JsonSchema
 title: class JsonSchema - schéma JSON défini soit dans un fichier par un chemin soit par un array Php
@@ -264,11 +395,11 @@ class JsonSchema {
     'http://json-schema.org/draft-06/schema#',
     'http://json-schema.org/draft-07/schema#',
   ];
-  private $verbose; // true pour afficher des commentaires
-  private $filepath; // chemin du fichier contenant le schéma éventuellement null si inconnu
-  private $def; // contenu du schéma comme array Php ou boolean
-  private $elt; // objet JsonSchFragment correspondant au schéma ou null si $def est booléen
-  private $status; // objet JsonSchStatus contenant le statut issu de la création du schéma
+  private bool $verbose; // true pour afficher des commentaires
+  private ?string $filepath; // chemin du fichier contenant le schéma éventuellement null si inconnu
+  private array|bool $def; // contenu du schéma comme array Php ou boolean
+  private ?JsonSchFragment $elt; // objet JsonSchFragment correspondant au schéma ou null si $def est booléen
+  private JsonSchStatus $status; // objet JsonSchStatus contenant le statut issu de la création du schéma
 
   /*PhpDoc: methods
   name: __construct
@@ -288,10 +419,10 @@ class JsonSchema {
     $this->status = new JsonSchStatus;
     if (is_string($def)) { // le paramètre $def est le chemin du fichier contenant l'objet JSON
       $def = JsonSch::predef($def); // remplacement des chemins prédéfinis par leur équivalent local
-      if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
+      if (!preg_match('!^((https?://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def, $matches))
         throw new Exception("Chemin $def non compris dans JsonSchema::__construct()");
       $filepath = $matches[1]; // partie avant #
-      $eltpath = isset($matches[4]) ? $matches[4] : ''; // partie après #
+      $eltpath = $matches[4] ?? ''; // partie après #
       //echo "filepath=$filepath, eltpath=$eltpath<br>\n";
       if ((substr($filepath, 0, 7)=='http://') || (substr($filepath, 0, 8)=='https://')
           || (substr($filepath, 0, 1)=='/')) { // si chemin défini en absolu
@@ -319,7 +450,7 @@ class JsonSchema {
       if (isset($def['$id']) && preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $def['$id'], $matches))
         $this->filepath = $matches[1];
       elseif (!isset($def['$ref']))
-        $this->status->setWarning("Attention le schema ne comporte pas d'identifiant");
+        $this->status->setWarning("Attention le schema ne comporte pas d'identifiant \$id");
     }
     elseif (is_bool($def)) {
       $this->filepath = null;
@@ -381,7 +512,7 @@ class JsonSchema {
         - showWarnings : chaine à afficher si ok avec les Warnings
         - showKo : chaine à afficher si KO
         - showErrors : chaine à afficher si KO avec les erreurs
-     - le troisième paramètre indique éventuellement un identificateur utilisé dans les erreurs
+     - le troisième paramètre indique éventuellement un chemin utilisé dans les messages d'erreurs
      - le quatrième paramètre fournit éventuellement un statut en entrée et n'est utilisé qu'en interne à la classe
   */
   function check($instance, array $options=[], string $id='', ?JsonSchStatus $status=null): JsonSchStatus {
@@ -415,26 +546,26 @@ class JsonSchema {
   
   /*PhpDoc: methods
   name: autoCheck
-  title: "autoCheck($instance, array $options=[]): ?JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ $schema"
+  title: "autoCheck($instance, array $options=[]): JsonSchStatus - valide la conformité d'une instance à son schéma défini par le champ $schema"
   doc: |
-    autoCheck() valide la conformité d'une instance à son schéma défini par le champ $schema
+    autoCheck() évalue la conformité d'une instance à son schéma défini par le champ $schema
     autoCheck() prend un ou 2 paramètres
-     - le premier paramètre est soit l'instance à valider comme valeur Php, soit le chemin du fichier la contenant
-     - le second paramètre indique éventuellement l'affichage à effectuer en fonction du résultat de la validation
-       c'est un array qui peut comprendre les champs suivants:
+     - le premier paramètre est l'instance à valider soit comme valeur Php, soit le chemin du fichier la contenant
+     - le second paramètre d'options indique éventuellement notamment l'affichage à effectuer en fonction du résultat
+       de la validation ; c'est un array qui peut comprendre les champs suivants:
         - showOk : chaine à afficher si ok
         - showWarnings : chaine à afficher si ok avec les Warnings
         - showKo : chaine à afficher si KO
         - showErrors : chaine à afficher si KO avec les erreurs
         - verbose : défini et vrai pour un appel verbeux, non défini ou faux pour un appel non verbeux
-    autoCheck() renvoit un JsonSchStatus ou null si le schema n'est pas défini
+    autoCheck() renvoit un JsonSchStatus
   */
-  static function autoCheck($instance, array $options=[]): ?JsonSchStatus {
-    $verbose = isset($options['verbose']) && $options['verbose'];
+  static function autoCheck($instance, array $options=[]): JsonSchStatus {
+    $verbose = $options['verbose'] ?? false;
     if ($verbose)
       echo "JsonSchema::autoCheck(instance=",json_encode($instance),",options=",json_encode($options),")<br>\n";
     
-    if (is_string($instance)) { // le premier paramètre est le chemin du fichier contenant l'objet JSON
+    if (is_string($instance)) { // le premier paramètre est le chemin du fichier contenant l'instance
       $instance = JsonSch::predef($instance); // remplacement des chemins prédéfinis par leur équivalent local
       if (!preg_match('!^([^#]+)(#(.*))?$!', $instance, $matches))
         throw new Exception("Chemin $instance non compris dans JsonSchema::autoCheck()");
@@ -443,108 +574,21 @@ class JsonSchema {
       //echo "filepath=$filepath, eltpath=$eltpath<br>\n";
       $def = JsonSch::file_get_contents($filepath);
       $instance = $eltpath ? JsonSch::subElement($def, $eltpath) : $def; // la définition de l'élément
+      $pathDir = dirname($filepath);
     }
     if (!isset($instance['$schema']))
-      return null;
+      return new JsonSchStatus(['propriété $schema absente du document']);
     $jSchema = $instance['$schema'];
-    if (is_string($jSchema) && (strpos($jSchema, '#')===false))
+    if (is_string($jSchema) && (strpos($jSchema, '#') === false))
       $jSchema .= '.schema.yaml';
+    if (is_string($jSchema) && (substr($jSchema, 0, 7)<>'http://') && (substr($jSchema, 0, 8)<>'https://')
+      && (substr($jSchema, 0, 1)<>'/') && isset($pathDir))
+        $jSchema = "$pathDir/$jSchema";
     $schema = new JsonSchema($jSchema, $verbose);
     return $schema->check($instance, $options);
   }
-};
 
-/*PhpDoc: classes
-name: JsonSchema
-title: class JsonSchStatus - définit un statut de vérification de conformité d'une instance
-methods:
-doc: |
-  La classe JsonSchStatus définit le statut d'une vérification de conformité d'une instance
-  Un objet de cette classe est retourné par une vérification.
-  La conformité de l'instance au schéma peut être testée et les erreurs et alertes peuvent être fournies
-
-  Les erreurs recensées sont organisées sous la forme d'une liste soit de chaines, soit de groupes d'erreurs
-  Un groupe d'erreurs correspond à une erreur sur un oneOf
-  C'est une structure avec un label et comme children une liste de listes de chaines
-  Le premier niveau de liste correspond aux possibilités de choix de schéma
-  Le second à la liste des erreurs retournées en traitant ce choix
-  exemple: http://localhost/schema/?schema=geojson%2Fgeometry.schema.yaml&instance=type%3A+LineString%0D%0Acoordinates%3A+%5B1%2C+2%5D&action=fchoice
-*/
-class JsonSchStatus {
-  private $warnings=[]; // liste des warnings
-  private $errors=[]; // erreurs dans l'instance [string|{label: string, children: [errors]}]
-  
-  function __toString(): string {
-    $s = '';
-    if ($this->errors)
-      $s .= '<pre><b>'.Yaml::dump(['Errors'=>$this->errors], 999)."</b></pre>\n";
-    if ($this->warnings)
-      $s .= '<pre><i>'.Yaml::dump(['Warnings'=> $this->warnings], 999)."</i></pre>";
-    return $s;
-  }
-  
-  // ajoute une erreur
-  function setError(string $message): JsonSchStatus { $this->errors[] = $message; return $this; }
-  
-  // ajoute une branche d'erreurs
-  function setErrorBranch(string $message, array $statusArray): JsonSchStatus {
-    $children = [];
-    foreach ($statusArray as $status2)
-      $children[] = $status2->errors;
-    $this->errors[] = ['label'=> $message, 'children'=> $children];
-    return $this;
-  }
-  
-  /*PhpDoc: methods
-  name: ok
-  title: "ok(): bool - true ssi pas d'erreur"
-  */
-  function ok(): bool { return count($this->errors)==0; }
-  
-  /*PhpDoc: methods
-  name: errors
-  title: "errors(): array - retourne les erreurs"
-  */
-  function errors(): array { return $this->errors; }
-  
-  /*PhpDoc: methods
-  name: showErrors
-  title: "showErrors(): void - affiche les erreurs"
-  */
-  function showErrors(string $message=''): void {
-    if ($this->errors)
-      echo $message,'<pre><b>',Yaml::dump(['Errors'=>$this->errors], 999),"</b></pre>\n";
-  }
-  
-  // ajoute un warning
-  function setWarning(string $message): void { $this->warnings[] = $message; }
-  
-  /*PhpDoc: methods
-  name: warnings
-  title: "warnings(): array - retourne les alertes"
-  */
-  function warnings(): array { return $this->warnings; }
-  
-  /*PhpDoc: methods
-  name: showWarnings
-  title: "showWarnings(): void - affiche les warnings"
-  */
-  function showWarnings(string $message=''): void {
-    echo $message;
-    if ($this->warnings)
-      echo '<pre><i>',Yaml::dump(['Warnings'=> $this->warnings], 999),"</i></pre>";
-  }
-  
-  // ajoute à la fin du statut courant le statut en paramètre et renvoie le statut courant
-  function append(JsonSchStatus $toAppend): JsonSchStatus {
-    $this->warnings = array_merge($this->warnings, $toAppend->warnings);
-    $this->errors = array_merge($this->errors, $toAppend->errors);
-    return $this;
-  }
-};
-
-if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSchema 
-  if (isset($_GET['test']) && ($_GET['test']=='JsonSchema')) {
+  static function test() {
     echo "Test JsonSchema<br>\n";
     foreach ([['type'=> 'string'], ['type'=> 'number']] as $schemaDef) {
       $schema = new JsonSchema($schemaDef);
@@ -557,27 +601,13 @@ if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de 
         $status->showErrors();
     }
     echo "FIN test JsonSchema<br><br>\n";
+    die();
   }
-  $unitaryTests[] = 'JsonSchema';
-}
+};
 
-if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de subElement 
-  if (isset($_GET['test']) && ($_GET['test']=='subElement')) {
-    echo "Test subElement<br>\n";
-    $object = ['a'=>'a', 'b'=> ['c'=> 'bc', 'd'=> ['e'=> 'bde']]];
-    JsonSch::subElementC($object, '/b');
-    JsonSch::subElementC($object, '/b/d');
-    JsonSch::subElementC($object, '/x');
-    JsonSch::subElementC($object, '/a');
-    echo "FIN test subElement<br><br>\n";
-  }
-  $unitaryTests[] = 'subElement';
+if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Test unitaire de la classe JsonSchema 
+  if (!isset($_GET['test']))
+    echo "<a href='?test=JsonSchema'>Test de la classe JsonSchema</a><br>\n";
+  elseif ($_GET['test']=='JsonSchema')
+    JsonSchema::test();
 }
-
-if (basename(__FILE__) == basename($_SERVER['PHP_SELF'])) { // Menu des tests unitaires 
-  echo "Tests unitaires:<ul>\n";
-  foreach ($unitaryTests as $unitaryTest)
-    echo "<li><a href='?test=$unitaryTest'>$unitaryTest</a>\n";
-  die("</ul>\nFIN tests unitaires");
-}
-

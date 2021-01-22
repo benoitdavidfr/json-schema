@@ -31,6 +31,8 @@ includes:
   - jsonschema.inc.php
 */
 ini_set('memory_limit', '512M');
+set_time_limit(2*60);
+
 require_once __DIR__.'/vendor/autoload.php';
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
@@ -87,7 +89,7 @@ if (0) {
 }
 
 // saisie dans un formulaire de l'instance et du schéma
-if (isset($_GET['action']) && ($_GET['action']=='form')) {
+if (($_GET['action'] ?? null)=='form') {
   $schemaParDefaut = <<<'EOT'
 # schéma par défaut
 $schema: http://json-schema.org/draft-07/schema#
@@ -154,7 +156,7 @@ EOT;
 }
 
 // saisie dans un formulaire de l'instance et choix d'un schéma prédéfini
-if (isset($_GET['action']) && ($_GET['action']=='fchoice')) {
+if (($_GET['action'] ?? null)=='fchoice') {
   $schema_choices = [
     'json-schema.schema.json'=> "méta schéma JSON",
     'geojson/featurecollection.schema.json'=> "FeatureCollection GeoJSON",
@@ -249,7 +251,7 @@ function asPhpSource($value, $level=0): string {
 }
 
 
-if (isset($_GET['action']) && ($_GET['action']=='convi')) {
+if (($_GET['action'] ?? null)=='convi') {
   $text = isset($_GET['txt']) ? $_GET['txt'] : (isset($_POST['txt']) ? $_POST['txt'] : '');
   $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_POST['lang']) ? $_POST['lang'] : 'yaml');
   echo "<form method='POST'><table border=1>
@@ -282,7 +284,7 @@ if (isset($_GET['action']) && ($_GET['action']=='convi')) {
   }
   echo '<pre>';
   switch($lang) {
-    case 'yaml': echo Yaml::dump($doc, 999); break;
+    case 'yaml': echo Yaml::dump($doc, 999, 2); break;
     case 'php': echo asPhpSource($doc); break;
     case 'dump': var_dump($doc); break;
     default:
@@ -295,12 +297,20 @@ if (isset($_GET['action']) && ($_GET['action']=='convi')) {
 // navigation dans les répertoires
 if (is_dir($dir = __DIR__."/$_GET[file]")) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema find</title></head><body>\n";
+  $files = [];
   if ($dh = opendir($dir)) {
     while (($file = readdir($dh)) !== false) {
-      if (in_array(substr($file, -5), ['.yaml','.json']) || (substr($file, -4)=='.php') || is_dir("$dir/$file"))
-        echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]/$file'>$file</a><br>\n";
+      $pos = strrpos($file, '.');
+      $ext = ($pos !== false) ? substr($file, $pos+1) : null;
+      //echo "ext=$ext<br>\n";
+      if (in_array($ext, ['yaml','json','geojson','php']) || is_dir("$dir/$file"))
+        $files[$file] = 1;
     }
     closedir($dh);
+    ksort($files);
+    foreach (array_keys($files) as $file) {
+      echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]/$file'>$file</a><br>\n";
+    }
   }
   echo "<a href='?'><i>Retour</i></a><br>\n";
   die();
@@ -313,10 +323,8 @@ if (is_dir($dir = __DIR__."/$_GET[file]")) {
 // Dans un fichier de données, le schéma est défini par le champ $schema
 if ($_GET['action'] == 'check') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema check</title></head><body>\n";
-  $verbose = false;
-  if (isset($_GET['verbose']))
-    $verbose = true;
-  else
+  $verbose = isset($_GET['verbose']);
+  if (!$verbose)
     echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]&amp;verbose=true'>verbose</a><br>\n";
   
   //try {
@@ -331,6 +339,7 @@ if ($_GET['action'] == 'check') {
   if (!isset($content['$schema']))
     die('Erreur $schema non défini'."\n");
   if (in_array($content['$schema'], JsonSchema::SCHEMAIDS)) { // c'est un schema, je le valide / au méta-schéma
+    //echo "C'est un schéma<br>\n";
     $metaschema->check($content, [
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
@@ -368,13 +377,14 @@ if ($_GET['action'] == 'check') {
   }
   
   else { // c'est un document à valider par rapport à son schema
-    $jSchema = (is_string($content['$schema'])) ?
+    //echo "c'est un document à valider par rapport à son schema<br>\n";
+    /*$jSchema = (is_string($content['$schema'])) ?
       JsonSch::file_get_contents(JsonSch::predef($content['$schema'].'.schema.yaml'))
        : $content['$schema'];
     $metaschema->check($jSchema, [
       'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
       'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
-    ]);
+    ]);*/
     JsonSchema::autoCheck(__DIR__."/$_GET[file]", [
     //JsonSchema::autoCheck($content, [
       'showWarnings'=> "ok instance conforme au schéma<br>\n",

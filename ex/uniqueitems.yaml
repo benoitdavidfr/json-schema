@@ -1,0 +1,36 @@
+title: Test de uniqueItems sur des objets
+$schema:
+  $schema: 'http://json-schema.org/draft-06/schema#'
+  type: object
+  properties:
+    title:
+      type: string
+    arraysOfInts:
+      type: array
+      items:
+        type: array
+        uniqueItems: true
+        items:
+          type: number
+    arraysOfObjects:
+      type: array
+      items:
+        type: array
+        uniqueItems: true
+        items:
+          type: object
+          properties:
+            label:
+              type: string
+arraysOfInts:
+  - [1, 2, 3]
+  #- [1, 2, 2]
+arraysOfObjects:
+  -
+    - label: étiquette1
+    - label: étiquette2
+  -
+    - label: étiquette1
+    - label: étiquette2
+    - label: étiquette2
+  

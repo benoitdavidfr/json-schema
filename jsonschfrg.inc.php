@@ -5,6 +5,9 @@ title: jsonschfrg.inc.php - définition de la classe JsonSchFragment utilisée p
 classes:
 doc: |
 journal: |
+  22/1/2021:
+    - passage à Php 8
+    - modif JsonSchFragment::checkArray() pour que le test sur uniqueItems fonctionne sur des non atomes
   25/4/2020:
     ajout vérification de la contrainte enum pour un object, un array et un numberOrInteger en plus du string
   3/4/2020:
@@ -30,27 +33,28 @@ doc: |
 */
 class JsonSchFragment {
   const RFC3339_EXTENDED = 'Y-m-d\TH:i:s.vP'; // DateTimeInterface::RFC3339_EXTENDED
-  private $verbose; // verbosité boolean
-  private $def; // définition de l'élément courant du schema sous la forme d'un array ou d'un booléen Php
-  private $schema; // l'objet schema contenant l'élément, indispensable pour retrouver ses définitions
+  private bool $verbose; // verbosité boolean
+  private array|bool $def; // définition de l'élément courant du schema sous la forme d'un array ou d'un booléen Php
+  private JsonSchema $schema; // l'objet schema contenant l'élément, indispensable pour retrouver ses définitions
   // et pour connaitre son répertoire courant en cas de référence relative
   
-  function __construct($def, JsonSchema $schema, bool $verbose) {
+  function __construct(array|bool $def, JsonSchema $schema, bool $verbose) {
     if ($verbose)
       echo "JsonSchFragment::_construct(def=",json_encode($def),", schema, verbose=",$verbose?'true':'false',")<br>\n";
-    if (!is_array($def) && !is_bool($def)) {
+    /*if (!is_array($def) && !is_bool($def)) {
       $errorMessage = "TypeError: Argument def passed to JsonSchFragment::__construct() must be of the type array or boolean";
       echo "JsonSchFragment::__construct(def=",json_encode($this->def),")<br>$errorMessage<br><br>\n";
       throw new Exception($errorMessage);
-    }
+    }*/
     $this->verbose = $verbose;
     $this->def = $def;
     $this->schema = $schema;
+    //echo '<pre>JsonSchFragment='; print_r($this); echo "</pre>\n";
   }
   
   function __toString(): string { return json_encode($this->def, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE); }
   
-  function def(): array { return $this->def; }
+  function def(): array|bool { return $this->def; }
 
   // le schema d'une des propriétés de l'object ou null si elle n'est pas définie
   private function schemaOfProperty(string $id, string $propname, JsonSchStatus $status): ?JsonSchFragment {
@@ -136,10 +140,10 @@ class JsonSchFragment {
     if ($this->verbose)
       echo "checkRef(id=$id, instance=",json_encode($instance),")@def=",json_encode($this->def),"<br><br>\n";
     $path = $this->def['$ref'];
-    if (!preg_match('!^((http://[^/]+/[^#]+)|[^#]+)?(#(.*))?$!', $path, $matches))
+    if (!preg_match('!^((https?://[^/]+/[^#]*)|[^#]+)?(#(.*))?$!', $path, $matches))
       throw new Exception("Chemin $path non compris dans JsonSchema::__construct()");
     $filepath = $matches[1];
-    $eltpath = isset($matches[4]) ? $matches[4] : '';
+    $eltpath = $matches[4] ?? '';
     //echo "checkRef: filepath=$filepath, eltpath=$eltpath<br>\n";
     if (!$filepath) { // Si pas de filepath alors même fichier schéma
       $content = JsonSch::subElement($this->schema->def(), $eltpath);
@@ -391,7 +395,9 @@ class JsonSchFragment {
         $status->setError("aucun élément de $id ne vérifie contains");
     }
     if (isset($this->def['uniqueItems']) && $this->def['uniqueItems']) {
-      if (count(array_unique($instance)) <> count($instance))
+      //echo "checkArray(id=$id, instance=",json_encode($instance),")@def=$this<br><br>\n";
+      //echo "array_unique(instance)=",json_encode(array_unique($instance)),"<br>\n";
+      if (!self::checkUniqueItems($instance))
         $status->setError("array $id ne vérifie pas uniqueItems");
     }
     if (!isset($this->def['items']))
@@ -406,6 +412,16 @@ class JsonSchFragment {
     foreach ($instance as $i => $elt)
       $status = $schOfItem->check($elt, "$id.$i", $status);
     return $status;
+  }
+  
+  // vérifie si les valeurs de l'array $array sont distinctes 2 à 2
+  // Pour cela les valeurs sont transformées en chaine pour utiliser array_unique()
+  private static function checkUniqueItems(array $array): bool {
+    $strings = [];
+    foreach ($array as $i => $val) {
+      $strings[] = json_encode($val);
+    }
+    return (count(array_unique($strings)) == count($strings));
   }
   
   // traitement du cas où le type indique que la valeur est un object
