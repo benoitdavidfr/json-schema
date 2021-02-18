@@ -1,10 +1,11 @@
 <?php
 /*PhpDoc:
 name: index.php
-title: index.php - test de la classe JsonSchema
+title: index.php - utilisation de la classe JsonSchema
 doc: |
   Fournit les fonctionnalités suivantes:
-    - parcours interactif des fichiers json/yaml pour valider soit s'il existe par rapport à son $schema
+    - parcours interactif des fichiers json/yaml et sélection d'un fichier pour le valider par rapport à son schema
+      s'il est défini
     - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
     - conversion interactive entre JSON, Yaml et du code Php évaluable par eval()
@@ -47,11 +48,12 @@ if (!isset($_GET['file']) && !isset($_GET['action'])) {
   echo "Permet de vérfier la conformité d'une instance à un schéma, de convertir entre JSON et Yaml ",
         "ou de naviguer dans les répertoires pour sélectionner des fichiers Yaml ou JSON<br>\n";
   foreach ($bookmarks as $file)
-    echo "<a href='?action=check&amp;file=$file'>check $file</a>",
+    echo " - <a href='?action=check&amp;file=$file'>check $file</a>",
          " / <a href='?action=convert&amp;file=$file'>convert</a><br>\n";
-  echo "<a href='?action=form'>saisie dans un formulaire de l'instance et du schéma</a><br>\n";
-  echo "<a href='?action=fchoice'>saisie dans un formulaire de l'instance et choix d'un schéma prédéfini</a><br>\n";
-  echo "<a href='?action=convi'>conversion interactive</a><br>\n";
+  echo " - <a href='?action=form'>saisie dans un formulaire de l'instance et du schéma</a><br>\n";
+  echo " - <a href='?action=fchoice'>
+    saisie dans un formulaire de l'instance et choix d'un schéma prédéfini</a><br>\n";
+  echo " - <a href='?action=convi'>conversion interactive</a><br>\n";
   die();
 }
 
@@ -328,7 +330,7 @@ if ($_GET['action'] == 'check') {
     echo "<a href='?action=$_GET[action]&amp;file=$_GET[file]&amp;verbose=true'>verbose</a><br>\n";
   
   //try {
-    $content = JsonSch::file_get_contents(__DIR__."/$_GET[file]");
+  $content = JsonSch::file_get_contents(__DIR__."/$_GET[file]");
     //} catch (Exception $e) {
     //die("Erreur de lecture de $_GET[file] : ".$e->getMessage());
     //}
@@ -378,13 +380,6 @@ if ($_GET['action'] == 'check') {
   
   else { // c'est un document à valider par rapport à son schema
     //echo "c'est un document à valider par rapport à son schema<br>\n";
-    /*$jSchema = (is_string($content['$schema'])) ?
-      JsonSch::file_get_contents(JsonSch::predef($content['$schema'].'.schema.yaml'))
-       : $content['$schema'];
-    $metaschema->check($jSchema, [
-      'showOk'=> "ok schéma conforme au méta-schéma<br>\n",
-      'showErrors'=> "KO schéma NON conforme au méta-schéma<br>\n",
-    ]);*/
     JsonSchema::autoCheck(__DIR__."/$_GET[file]", [
     //JsonSchema::autoCheck($content, [
       'showWarnings'=> "ok instance conforme au schéma<br>\n",

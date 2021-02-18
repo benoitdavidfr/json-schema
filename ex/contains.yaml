@@ -1,6 +1,9 @@
 title: test de contains
+description: |
+  Le document contient 2 types de tests, sur entiers et sur objets.
+  Pour chaque type de test, le premier exemple est valide et le second invalide.
 $schema:
-  $schema: 'http://json-schema.org/draft-06/schema#'
+  $schema: http://json-schema.org/draft-06/schema#
   type: object
   properties:
     title:
@@ -15,7 +18,7 @@ $schema:
     withObjects:
       type: array
       items:
-        description: un array qui contient au moins un objet {label: string}
+        description: "un array qui contient au moins un objet {label: string}"
         type: array
         contains:
           type: object

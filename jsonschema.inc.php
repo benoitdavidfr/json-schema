@@ -411,6 +411,7 @@ class JsonSchema {
     le troisième paramètre contient éventuellement le schema père et n'est utilisé qu'en interne à la classe
   */
   function __construct($def, bool $verbose=false, ?JsonSchema $parent=null) {
+    //echo "JsonSchema::__construct($def)<br>\n";
     $def0 = $def;
     $this->verbose = $verbose;
     if ($verbose)
@@ -462,9 +463,12 @@ class JsonSchema {
       throw new Exception("Erreur paramètre def incorrect dans la création d'un schéma");
     $this->def = $def;
     
+    /*Je ne comprends pas
     if (!isset($def['$ref']) &&
-        (!isset($def['$schema']) || !in_array($def['$schema'], self::SCHEMAIDS)))
+        (!isset($def['$schema']) || !in_array($def['$schema'], self::SCHEMAIDS))) {
+      echo '<pre>$def='; print_r($def);
       $this->status->setWarning("Attention le schema ne comporte aucun des id. json-schema.org, draft-06 ou draft-07");
+    }*/
     if (isset($def['definitions'])) {
       foreach (array_keys($def['definitions']) as $defid)
         self::checkDefinition($defid, $def['definitions']);
