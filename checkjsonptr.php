@@ -2,11 +2,15 @@
 /*PhpDoc:
 name: checkjsonptr.php
 title: checkjsonptr.php - Vérifie la validité de pointeurs JSON
+classes:
 doc: |
-  Vérifie dans un fichier Yaml qu'un pointeur JSON pointe effectivement sur une valeur définie
-  L'utilisation de file_exists() ne permet pas de traiter les pointeurs distants http
+  Appelé comme script, permet de sélectionner interactivement un fichier Yaml ou JSON pour y vérifier
+  que les pointeurs JSON sont déréfencables.
+  De plus, en fonction des options, tous les fichiers référencés locaux peuvent aussi être vérifiés.
+  Pour faciliter la réutilisation du code, définit la classe JsonPointer regroupant les fonctions peuvant être appelées
+  directement.
 journal: |
-  17/2/2021:
+  17-19/2/2021:
     - création
 */
 
@@ -14,258 +18,385 @@ require_once __DIR__.'/vendor/autoload.php';
 
 use Symfony\Component\Yaml\Yaml;
 
-// trouve dans le document $yaml les pointeurs JSON et retourne la liste sou la forme [path => pointer]
-// où path est le chemin dans $yaml et pointer est la valeur définissant le pointeur
-function findJsonPointers(string $path, $yaml, array $keys=[]): array {
-  //echo "path=$path, keys=",implode('/', $keys),"\n";
-  $jptrPath = $path.($keys ? "#/".implode('/', $keys) : '');
-  //echo "jptrPath=$jptrPath\n";
-  $jptrs = [];
-  if (is_array($yaml)) {
-    //echo "yaml est un array\n";
-    if (isset($yaml['$ref'])) {
-      //echo "$jptrPath est un pointeur: ",Yaml::dump($yaml, 0),"\n";
-      $jptrs[$jptrPath] = $yaml;
-    }
-    else {
-      foreach ($yaml as $key => $value) {
-        $lkeys = $keys;
-        $lkeys[] = $key;
-        $jptrs = array_merge($jptrs, findJsonPointers($path, $value, $lkeys));
-      }
-    }
-  }
-  return $jptrs;
-}
-
-// Teste si le fragment défini par $fragId dans $yaml, fragId ne commence pas par # mais commence par un /
-// Si oui retourne ['value'=> value], si non retourne ['error'=> path]
-// filepath est utilisé pour fabriquer le message d'erreur
-// keys et ckeys sont utilisées pour les appels récursifs,
-// keys est la liste des clés restantes à tester, ckeys est la liste des clés testées ok
-function deref(string $filePath, string $fragId, array $yaml, ?array $keys=null, array $okkeys=[]): array {
-  if ($keys === null) {
-    $keys = explode('/', $fragId);
-    array_shift($keys);
-  }
-  //echo "  elt(ref=$ref, keys=",implode('/',$keys),", okkeys=",implode('/',$okkeys),")\n";
-  if (!$keys) {
-    //echo "ok pour #/",implode('/',$ckeys),"\n";
-    return ['value'=> $yaml];
-  }
-  else {
-    $key0 = array_shift($keys);
-    $okkeys[] = $key0;
-    if (!isset($yaml[$key0])) {
-      //echo "  erreur sur #/",implode('/',$okkeys),"\n";
-      return ['error'=> "$filePath#/".implode('/', $okkeys)];
-    }
-    else {
-      return deref($filePath, $fragId, $yaml[$key0], $keys, $okkeys);
-    }
-  }
-}
-
-// extrait du $ref le chemin du fichier
-/*function filePath(string $ref): string {
-  if (($pos = strpos($ref, '#')) === false)
-    return $ref;
-  else
-    return substr($ref, 0, $pos);
-}*/
-
-// décompose le chemin en host/path/search/fragId
-function decompPath(string $fpath): array {
-  //echo "$fpath -> ";
-  if ((substr($fpath, 0, 7) == 'http://') || (substr($fpath, 0, 8) == 'https://')) {
-    if (!preg_match('!^(https?)://([^/]+)(/[^?#]+)(\?[^#]+)?(#.*)?$!', $fpath, $matches))
-      throw new Exception("no match for '$fpath' ligne ".__LINE__);
-    return [
-      'scheme'=> $matches[1],
-      'host'=> $matches[2],
-      'path'=> $matches[3],
-      'search'=> isset($matches[4]) ? substr($matches[4], 1) : '',
-      'fragId'=> isset($matches[5]) ? substr($matches[5], 1) : '',
-    ];
-  }
-  elseif (($spos = strpos($fpath, '?')) !== false) {
-    $path = substr($fpath, 0, $spos);
-    $fpath = substr($fpath, $spos+1);
-    if (($fpos = strpos($fpath, '#')) !== false) {
-      $search = substr($fpath, 0, $fpos);
-      $fragId = substr($fpath, $fpos+1);
-    }
-    else {
-      $search = $fpath;
-      $fragId = '';
-    }
-    return [
-      'scheme'=> '',
-      'host'=> '',
-      'path'=> $path,
-      'search'=> $search,
-      'fragId'=> $fragId,
-    ];
-  }
-  elseif (($fpos = strpos($fpath, '#')) !== false) {
-    return [
-      'scheme'=> '',
-      'host'=> '',
-      'path'=> substr($fpath, 0, $fpos),
-      'search'=> '',
-      'fragId'=> substr($fpath, $fpos+1),
-    ];
-  }
-  else {
-    return [
-      'scheme'=> '',
-      'host'=> '',
-      'path'=> $fpath,
-      'search'=> '',
-      'fragId'=> '',
-    ];
-  }
-}
-if (0) { // TEST de decompPath
-  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
-  print_r(decompPath('http://host.fr/a/b/c?sss#fff'));
-  print_r(decompPath('http://host.fr/a/b/c#fff'));
-  print_r(decompPath('http://host.fr/a/b/c?sss'));
-  print_r(decompPath('http://host.fr/a/b/c#ff?sss'));
-  /*print_r(decompPath('/a/b/c?sss#fff'));
-  print_r(decompPath('/a/b/c#fff'));
-  print_r(decompPath('/a/b/c?sss'));
-  print_r(decompPath('/a/b/c'));*/
-  print_r(decompPath('a/b/c?sss#fff'));
-  print_r(decompPath('a/b/c#fff'));
-  print_r(decompPath('a/b/c?sss'));
-  print_r(decompPath('a/b/c'));
-  /*print_r(decompPath('#fff'));
-  print_r(decompPath('?sss#fff'));
-  print_r(decompPath('?sss'));
-  print_r(decompPath(''));*/
-  die();
-}
-
-/*function pathType(string $filePath): string {
-  if ((substr($localFilePath, 0, 7) == 'http://') || (substr($localFilePath, 0, 8) == 'https://'))
-    return 'http';
-  elseif (substr($localFilePath, 0, 1)== '/')
-    return 'abs';
-  elseif (substr($localFilePath, 0, 1) == '#')
-    return 'intraFile'; // pointeur dans le même fichier
-}*/
-
-/*function buildFilePath(string $localFilePath, string $refFilePath): string {
-  echo "buildFilePath(localFilePath=$localFilePath, refFilePath=$refFilePath)\n";
-  $res = buildFilePath2($localFilePath, $refFilePath);
-  echo "-> $res\n";
-  return $res;
-}
-// pour les fichiers dans le même répertoire que $refFilePath, construit le chemin à partir du répertoire
-// de $refFilePath et le nom de fichier de $localFilePath
-// Pour les chemins absolus locaux ou en http, retourne localFilePath
-function buildFilePath2(string $localFilePath, string $refFilePath): string {
-  if ((substr($localFilePath, 0, 1)== '/')
-    || (substr($localFilePath, 0, 7) == 'http://') || (substr($localFilePath, 0, 8) == 'https://'))
-    return $localFilePath;
-  else
-    return dirname($refFilePath)."/$localFilePath";
-}*/
-
-// Vérifie la validité du pointeur défini dans $filePath au chemin $jPtrPath valant $jsonPtr
-function checkJsonPointer(string $filePath, array $yaml, string $jPtrPath, array $jsonPtr, string $options) {
-  //echo "checkJsonPointer($filePath, $jPtrPath, ",json_encode($jsonPtr),")\n";
-  $dcmp = decompPath($jsonPtr['$ref']);
-  if (!$dcmp['host']) { // local à la machine
-    if (!$dcmp['path'] && !$dcmp['search']) { // local au même fichier
-      if (!$dcmp['fragId'])
-        throw new Exception("Erreur pointeur vide");
-      else
-        $result = deref($filePath, substr($jsonPtr['$ref'], 1), $yaml);
-    }
-    else { // même machine mais autre fichier
-      if (substr($dcmp['path'], 0, 1) <> '/') { // chemin relatif
-        //echo "\nchemin relatif:\n";
-        $path = dirname($filePath).'/'.$dcmp['path'];
-        //echo "path=$path\n\n";
-      }
-      else
-        $path = $dcmp['path'];
-      if (!file_exists($path)) {
-        echo "KO: pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erronné en $dcmp[path]\n";
-        return;
-      }
-      $yaml = Yaml::parseFile($path);
-      $result = deref($path, $dcmp['fragId'], $yaml);
-    }
-  }
-  else { // machine distante
-    $path = "$dcmp[scheme]://$dcmp[host]$dcmp[path]$dcmp[search]";
-    if (($txt = @file_get_contents($path)) === false) {
-      echo "KO: pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erronné en $path\n";
-      return;
-    }
-    $yaml = Yaml::parse($txt);
-    $result = deref($path, $dcmp['fragId'], $yaml);
-  }
-  if (isset($result['error']))
-    echo "KO: pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erroné en $result[error]\n";
-  elseif ($options == 'showOk')
-    echo "Ok: pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est Ok\n";
-}
-
-function checkFile(string $filePath, string $options, array $filePathsDone=[]): array {
-  $filePathsToCheck = [];
-  $yaml = Yaml::parseFile($filePath);
-  echo Yaml::dump(['jsonPtrs'=> findJsonPointers($_GET['file'], $yaml)], 3, 2);
-
-  foreach (findJsonPointers($filePath, $yaml) as $jPtrPath => $jsonPtr) {
-    checkJsonPointer($filePath, $yaml, $jPtrPath, $jsonPtr, $options);
-    /*$destFilePath = filePath($jsonPtr['$ref']);
-    if ($destFilePath
-      && !isset($filePathsDone[$destFilePath]) 
-        && !isset($filePathsToCheck[$destFilePath]) 
-          && file_exists($destFilePath))
-      $filePathsToCheck[$destFilePath] = 1;*/
-  }
-  $filePathsDone[$filePath] = 1;
+/*PhpDoc: classes
+name: JsonPointer
+title: class JsonPointer - classe technique regroupant les fonctions comme méthodes statiques
+methods:
+*/
+class JsonPointer {
+  const VERSION = "version du 19/2/2021";
   
-  /*foreach (array_keys($filePathsToCheck) as $filePathToCheck) {
-    if (!isset($filePathsDone[$filePathToCheck]))
-      $filePathsDone = checkFile($filePathToCheck, $filePathsDone);
-  }*/
-  return $filePathsDone;
-}
+  /*PhpDoc: methods
+  name: findJsonPointers
+  title: "static function findJsonPointers(string $path, $yaml): array - retourne les pointeurs JSON du document $yaml"
+  doc: |
+    Trouve dans le document $yaml les pointeurs JSON et en retourne la liste sous la forme [path => pointer]
+    où path est le chemin dans $yaml et pointer est l'array définissant le pointeur.
+    Le paramètre $keys est utilisé pour les appels récursifs.
+  */
+  static function findJsonPointers(string $path, $yaml, array $keys=[]): array {
+    //echo "path=$path, keys=",implode('/', $keys),"\n";
+    $jptrPath = $path.($keys ? "#/".implode('/', $keys) : '');
+    //echo "jptrPath=$jptrPath\n";
+    $jptrs = [];
+    if (is_array($yaml)) {
+      //echo "yaml est un array\n";
+      if (isset($yaml['$ref'])) {
+        //echo "$jptrPath est un pointeur: ",Yaml::dump($yaml, 0),"\n";
+        $jptrs[$jptrPath] = $yaml;
+      }
+      else {
+        foreach ($yaml as $key => $value) {
+          $lkeys = $keys;
+          $lkeys[] = $key;
+          $jptrs = array_merge($jptrs, self::findJsonPointers($path, $value, $lkeys));
+        }
+      }
+    }
+    return $jptrs;
+  }
+
+  /*PhpDoc: methods
+  name: deref
+  title: "static function deref(string $filePath, array $yaml, string $fragId): array - Retourne le fragment de $yaml défini par $fragId"
+  doc: |
+    Retourne le fragment de $yaml défini par $fragId, fragId ne commence pas par # mais par /
+    S'il existe bien retourne ['value'=> value], si non retourne ['error'=> path] où path est le chemin dans $yaml
+    qui génère l'erreur.
+    filepath est une URL ou un chemin local et est utilisé pour fabriquer le message d'erreur.
+    $keys et $okkeys sont utilisées pour les appels récursifs,
+    $keys est la liste des clés restantes à tester, $okkeys est la liste des clés testées ok
+  */
+  static function deref(string $filePath, array $yaml, string $fragId, ?array $keys=null, array $okkeys=[]): array {
+    if ($keys === null) {
+      $keys = explode('/', $fragId);
+      array_shift($keys);
+    }
+    //echo "  elt(ref=$ref, keys=",implode('/',$keys),", okkeys=",implode('/',$okkeys),")\n";
+    if (!$keys) {
+      //echo "ok pour #/",implode('/',$ckeys),"\n";
+      return ['value'=> $yaml];
+    }
+    else {
+      $key0 = array_shift($keys);
+      $okkeys[] = $key0;
+      if (!isset($yaml[$key0])) {
+        //echo "  erreur sur #/",implode('/',$okkeys),"\n";
+        return ['error'=> "$filePath#/".implode('/', $okkeys)];
+      }
+      else {
+        return self::deref($filePath, $yaml[$key0], $fragId, $keys, $okkeys);
+      }
+    }
+  }
+
+  /*PhpDoc: methods
+  name: pathIsRemote
+  title: "static function pathIsRemote(string $path): bool  - teste si le chemin est distant"
+  */
+  static function pathIsRemote(string $path): bool {
+    return (substr($path, 0, 7) == 'http://') || (substr($path, 0, 8) == 'https://');
+  }
+  
+  /*PhpDoc: methods
+  name: filePath
+  title: "static function filePath(string $ref, string $srcPath): string - extrait du $ref le chemin du fichier et évent. le convertit"
+  doc: |
+    extrait du $ref le chemin du fichier et
+    s'il est relatif, le convertit en absolu, et
+    s'il est local et que $srcPath est distant alors le convertit en distant.
+    $srcPath est le chemin du fichier qui contient le pointeur.
+  */
+  static function filePath(string $ref, string $srcPath): string {
+    //echo "filePath($ref, $srcPath)";
+    $filePath = self::filePath2($ref, $srcPath);
+    //echo " -> $filePath\n";
+    return $filePath;
+  }
+  static function filePath2(string $ref, string $srcPath): string {
+    if (($pos = strpos($ref, '#')) === false)
+      $filePath = $ref;
+    else
+      $filePath = substr($ref, 0, $pos);
+    // filePath est la partie scheme/host/path/search de $ref
+    if (!$filePath) // $ref est un pointeur interne au même fichier
+      return $srcPath;
+    elseif (self::pathIsRemote($filePath)) // $ref est distant
+      return $filePath;
+    elseif (substr($ref, 0, 1) <> '/') // $ref est local et relatif
+      return dirname($srcPath)."/$filePath";
+    elseif (!self::pathIsRemote($srcPath)) // $ref est local et absolu et $srcPath n'est pas distant
+      return $filePath;
+    else { // $ref est local et absolu et $srcPath est distant
+      $src = self::decompPath($srcPath);
+      return "$src[scheme]://$src[host]$filePath";
+    }
+  }
+  static function TEST_filePath() {
+    echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
+    self::filePath('#/defs/def0', '/var/www/html/geovect/dcat/testjptr/main.yaml');
+    self::filePath('http://host/path#frag', 'xx');
+    self::filePath('/path#frag', 'xx');
+    self::filePath('../path#frag', '/dir1/dir2/srcpath');
+    self::filePath('/path#frag', 'http://host/hostpath');
+    die("Fin TEST_filePath\n");
+  }
+
+  /*PhpDoc: methods
+  name: decompPath
+  title: "static function decompPath(string $fpath): array  - décompose le chemin en scheme/host/path/search/fragId"
+  */
+  static function decompPath(string $fpath): array {
+    //echo "$fpath -> ";
+    if ((substr($fpath, 0, 7) == 'http://') || (substr($fpath, 0, 8) == 'https://')) {
+      if (!preg_match('!^(https?)://([^/]+)(/[^?#]+)(\?[^#]+)?(#.*)?$!', $fpath, $matches))
+        throw new Exception("no match for '$fpath' ligne ".__LINE__);
+      return [
+        'scheme'=> $matches[1],
+        'host'=> $matches[2],
+        'path'=> $matches[3],
+        'search'=> isset($matches[4]) ? substr($matches[4], 1) : '',
+        'fragId'=> isset($matches[5]) ? substr($matches[5], 1) : '',
+      ];
+    }
+    elseif (($spos = strpos($fpath, '?')) !== false) {
+      $path = substr($fpath, 0, $spos);
+      $fpath = substr($fpath, $spos+1);
+      if (($fpos = strpos($fpath, '#')) !== false) {
+        $search = substr($fpath, 0, $fpos);
+        $fragId = substr($fpath, $fpos+1);
+      }
+      else {
+        $search = $fpath;
+        $fragId = '';
+      }
+      return [
+        'scheme'=> '',
+        'host'=> '',
+        'path'=> $path,
+        'search'=> $search,
+        'fragId'=> $fragId,
+      ];
+    }
+    elseif (($fpos = strpos($fpath, '#')) !== false) {
+      return [
+        'scheme'=> '',
+        'host'=> '',
+        'path'=> substr($fpath, 0, $fpos),
+        'search'=> '',
+        'fragId'=> substr($fpath, $fpos+1),
+      ];
+    }
+    else {
+      return [
+        'scheme'=> '',
+        'host'=> '',
+        'path'=> $fpath,
+        'search'=> '',
+        'fragId'=> '',
+      ];
+    }
+  }
+  static function TEST_decompPath() { // TEST de decompPath
+    echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
+    print_r(self::decompPath('http://host.fr/a/b/c?sss#fff'));
+    print_r(self::decompPath('http://host.fr/a/b/c#fff'));
+    print_r(self::decompPath('http://host.fr/a/b/c?sss'));
+    print_r(self::decompPath('http://host.fr/a/b/c#ff?sss'));
+    /*print_r(self::decompPath('/a/b/c?sss#fff'));
+    print_r(self::decompPath('/a/b/c#fff'));
+    print_r(self::decompPath('/a/b/c?sss'));
+    print_r(self::decompPath('/a/b/c'));*/
+    print_r(self::decompPath('a/b/c?sss#fff'));
+    print_r(self::decompPath('a/b/c#fff'));
+    print_r(self::decompPath('a/b/c?sss'));
+    print_r(self::decompPath('a/b/c'));
+    /*print_r(self::decompPath('#fff'));
+    print_r(self::decompPath('?sss#fff'));
+    print_r(self::decompPath('?sss'));
+    print_r(self::decompPath(''));*/
+    die("Fin TEST_decompPath\n");
+  }
+
+  /*PhpDoc: methods
+  name: checkJsonPointer
+  title: "static function checkJsonPointer(string $filePath, array $yaml, string $jPtrPath, array $jsonPtr, array $options): bool - vérifie la validité d'un pointeur"
+  doc: |
+    Dans le fichier local dont le chemin est $filePath et le contenu $yaml, vérifie la validité du pointeur $jsonPtr
+    défini au chemin $jPtrPath en utilisant les options $options, Renvoie vrai ssi le pointeur est valide.
+    $filePath est le chemin absolu local défini par rappport à $_SERVER['DOCUMENT_ROOT'].
+    Ne fonctionne pas sur les $filePath distants.
+    Les pointeurs erronés sont affichés.
+    Si $options['showOk'] est défini et vrai alors affiche aussi les pointeurs corrects.
+  
+    Terminologie:
+      - distant (remote) / local - pointeur vers une machine différente de la source ou au sein de la même machine
+      - externe / interne - pointeur vers un autre fichier que la source ou au sein du même fichier
+  */
+  static function checkJsonPointer(string $filePath, array $yaml, string $jPtrPath, array $jsonPtr, array $options): bool {
+    //echo "checkJsonPointer($filePath, $jPtrPath, ",json_encode($jsonPtr),")\n";
+    $dcmp = self::decompPath($jsonPtr['$ref']);
+    if (!$dcmp['host']) { // pointeur local à la machine
+      if (!$dcmp['path'] && !$dcmp['search']) { // pointeur interne au même fichier
+        if (!$dcmp['fragId']) { // pointeur vide
+          echo "KO(",__LINE__,"): pointeur $jPtrPath vide\n";
+          return false;
+        }
+        else { // pointeur non vide interne au même fichier
+          $deref = self::deref($filePath, $yaml, $dcmp['fragId']);
+        }
+      }
+      else { // pointeur externe, ie vers un autre fichier sur la même machine 
+        if (substr($dcmp['path'], 0, 1) <> '/') // chemin relatif
+          $path = dirname($filePath).'/'.$dcmp['path'];
+        else // chemin absolu
+          $path = $dcmp['path'];
+        if (!file_exists("$_SERVER[DOCUMENT_ROOT]$path")) {
+          echo "KO(",__LINE__,"): pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erroné en $dcmp[path]\n";
+          return false;
+        }
+        //echo "path=$path\n\n";
+        $yaml = Yaml::parseFile("$_SERVER[DOCUMENT_ROOT]$path");
+        $deref = self::deref($path, $yaml, $dcmp['fragId']);
+      }
+    }
+    else { // pointeur distant, ie vers une autre machine
+      $path = "$dcmp[scheme]://$dcmp[host]$dcmp[path]$dcmp[search]";
+      if (($contents = @file_get_contents($path)) === false) {
+        //echo "file_get_contents($path) faux\n";
+        echo "KO(",__LINE__,"): pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erroné en $path\n";
+        return false;
+      }
+      $yaml = Yaml::parse($contents);
+      $deref = self::deref($path, $yaml, $dcmp['fragId']);
+    }
+    if (isset($deref['error'])) {
+      echo "KO(",__LINE__,"): pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est erroné en $deref[error]\n";
+      return false;
+    }
+    elseif ($options['showOk'] ?? null)
+      echo "Ok: pointeur défini en ",($jPtrPath)," -> ",$jsonPtr['$ref']," est Ok\n";
+    return true;
+  }
+
+  /*PhpDoc: methods
+  name: checkFile
+  title: "static function checkFile(string $filePath, array $options): array - Vérifie tous les pointeurs contenus dans le fichier"
+  doc: |
+    Vérifie tous les pointeurs contenus dans le fichier ayant $filePath pour chemin absolu local défini par rappport
+    à $_SERVER['DOCUMENT_ROOT']. $options peut contenir les options 'recursiveOnLocalFile' et 'showOk'.
+    Si options['recursiveOnLocalFile'] est défini et vrai alors teste aussi tous les fichiers référencés.
+    Retourne comme clés la liste des chemins des fichiers testés.
+    Le paramètre $checkedFilePaths est uniquement utilisé pour les appels récursifs.
+  */
+  static function checkFile(string $filePath, array $options, array $checkedFilePaths=[]): array {
+    $filePathsToCheck = []; // liste en clés des fichiers à tester
+    if (($contents = @file_get_contents("$_SERVER[DOCUMENT_ROOT]$filePath")) === false) {
+      echo "KO(",__LINE__,"): chemin de fichier $filePath erroné\n";
+      $checkedFilePaths[$filePath] = 1;
+      return $checkedFilePaths;
+    }
+    $yaml = Yaml::parse($contents);
+    echo Yaml::dump([$filePath => ['jsonPtrs'=> self::findJsonPointers($filePath, $yaml)]], 3, 2);
+
+    foreach (self::findJsonPointers($filePath, $yaml) as $jPtrPath => $jsonPtr) {
+      if (self::checkJsonPointer($filePath, $yaml, $jPtrPath, $jsonPtr, $options)) {
+        if ($options['recursiveOnLocalFile'] ?? null) {
+          $destFilePath = self::filePath($jsonPtr['$ref'], $filePath);
+          if (!self::pathIsRemote($destFilePath)
+            && !isset($checkedFilePaths[$destFilePath]) 
+              && !isset($filePathsToCheck[$destFilePath])
+                && ($destFilePath <> $filePath)) {
+            $filePathsToCheck[$destFilePath] = 1;
+            echo "ajout $destFilePath\n";
+          }
+        }
+      }
+    }
+    $checkedFilePaths[$filePath] = 1;
+  
+    foreach (array_keys($filePathsToCheck) as $filePathToCheck) {
+      if (!isset($checkedFilePaths[$filePathToCheck]))
+        $checkedFilePaths = array_merge($checkedFilePaths, self::checkFile($filePathToCheck, $options, $checkedFilePaths));
+    }
+    return $checkedFilePaths;
+  }
+  
+  /*PhpDoc: methods
+  name: browseFile
+  title: "static function browseFile(string $dir, array $fileExts, array $optionKeys): void - Navigue dans l'arborescence des fichiers pour en sélectionner un"
+  doc: |
+    Permet de naviguer dans l'arborescence à partir de $dir pour sélectionner un des fichiers ayant pour extension
+    l'une de celles fournies dans le paramètre $fileExts et de sélectionner de plus une ou plusieurs des options
+    dont les clés sont définies dans $optionKeys.
+    Si le chemin passé en paramètre est un répertoire alors La méthode affiche du code Html pour choisir un fichier
+    ou un répertoire en rappelant le script avec en paramètres $_GET file le chemin du fichier ou du répertoire,
+    et options la liste des options sélectionnées. Cette affichage se termine par un die().
+    Si le chemin passé en paramètre $dir n'est pas un répertoire alors n'affiche rien et retourne.
+    La méthode est à rappeler en début de script.
+  */
+  static function browseFile(string $dir, array $fileExts, array $optionKeys): void {
+    if (!is_dir($dir))
+      return;
+    $files = [];
+    echo "<b>Répertoire $dir :</b><ul>\n";
+    if ($dh = opendir($dir)) {
+      while (($file = readdir($dh)) !== false) {
+        if ($file == '.') continue;
+        $pos = strrpos($file, '.');
+        $ext = ($pos !== false) ? substr($file, $pos+1) : null;
+        //echo "ext=$ext<br>\n";
+        if (in_array($ext, $fileExts) || is_dir("$dir/$file"))
+          $files[$file] = 1;
+      }
+      closedir($dh);
+      ksort($files);
+      foreach (array_keys($files) as $file) {
+        echo "<li><a href='?file=",realpath("$dir/$file"),
+          (isset($_GET['options']) ? "&amp;options=$_GET[options]" : ''),
+          "'>$file</a></li>\n";
+      }
+    }
+    echo "</ul>\n";
+  
+    // Permet de modifier les options
+    $options = ($_GET['options'] ?? null) ? array_fill_keys(explode(',', $_GET['options']), true) : [];
+    //print_r($options); echo "<br>\n";
+    foreach ($optionKeys as $option) {
+      $opts2 = $options;
+      if ($opts2[$option] ?? null) {
+        unset($opts2[$option]);
+        echo "<a href='?file=$dir&amp;options=",implode(',', array_keys($opts2)),"'>",
+          "Enlève l'option $option</a><br>\n";
+      }
+      else {
+        $opts2[$option] = true;
+        echo "<a href='?file=$dir&amp;options=",implode(',', array_keys($opts2)),"'>",
+          "Ajoute l'option $option</a><br>\n";
+      }
+    }
+    die("--<br>".self::VERSION);
+  }
+};
+//JsonPointer::TEST_filePath();
+//JsonPointer::TEST_decompPath();
+
+
+if ((__FILE__ <> realpath($_SERVER['DOCUMENT_ROOT'].$_SERVER['SCRIPT_NAME'])) && (($argv[0] ?? '') <> basename(__FILE__)))
+  return;
+
+
+echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body>\n";
 
 $file = $_GET['file'] ?? realpath('..');
 
-// navigation dans les répertoires en permettant d'ajouter l'option showOk
-if (is_dir($dir = $file)) {
-  echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body>\n";
-  $files = [];
-  echo "<ul>\n";
-  if ($dh = opendir($dir)) {
-    while (($file = readdir($dh)) !== false) {
-      $pos = strrpos($file, '.');
-      $ext = ($pos !== false) ? substr($file, $pos+1) : null;
-      //echo "ext=$ext<br>\n";
-      if (in_array($ext, ['yaml','json','geojson']) || is_dir("$dir/$file"))
-        $files[$file] = 1;
-    }
-    closedir($dh);
-    ksort($files);
-    foreach (array_keys($files) as $file) {
-      echo "<li><a href='?file=",realpath("$dir/$file"),
-        (isset($_GET['options']) ? "&amp;options=$_GET[options]" : ''),
-        "'>$file</a></li>\n";
-    }
-  }
-  echo "</ul>\n";
-  echo "<a href='?file=$_GET[file]&amp;options=showOk'>Ajoute l'option showOk</a>\n";
-  die();
-}
+// navigation dans les répertoires pour sélectionner un fichier Yaml/JSON en permettant de sélectionner les options
+JsonPointer::browseFile($file, ['yaml','yml','json','geojson'], ['showOk', 'recursiveOnLocalFile']);
 
-echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
+echo "<pre>\n";
 
-checkFile($_GET['file'], $_GET['options'] ?? '');
+$checkedFilePaths = JsonPointer::checkFile(
+  substr($_GET['file'], strlen($_SERVER['DOCUMENT_ROOT'])),
+  ($_GET['options'] ?? null) ? array_fill_keys(explode(',', $_GET['options']), true) : []
+);
+echo Yaml::dump(['checkedFilePaths'=> array_keys($checkedFilePaths)], 9, 2);

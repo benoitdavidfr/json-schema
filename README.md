@@ -22,3 +22,9 @@ Il suffit de charger le fichier comme array Php ou d'utiliser le chemin du fichi
 
 Cette implémentation est fondée sur la définition http://json-schema.org/draft-06/schema#
 Elle est complète.
+
+Le validateur peut aussi être appelé interactivement en appelant le fichier index.php
+qui offre aussi les fonctionnalités suivantes:
+
+  - vérification de la validité des pointeurs JSON d'un fichier Yaml,
+  - conversion interactive entre les formats Yaml, JSON et Php.

@@ -10,6 +10,9 @@ doc: |
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
     - conversion interactive entre JSON, Yaml et du code Php évaluable par eval()
 journal: |
+  19/2/2021:
+    - ajout d'un lien vers checkjsonptr.php
+    - correction des conversions (action=convert)
   16/2/2019:
     ajout possibilité de conversion interactive depuis et vers du code Php évaluable par eval()
   24/1/2019:
@@ -35,9 +38,10 @@ ini_set('memory_limit', '512M');
 set_time_limit(2*60);
 
 require_once __DIR__.'/vendor/autoload.php';
+require_once __DIR__.'/jsonschema.inc.php';
+
 use Symfony\Component\Yaml\Yaml;
 use Symfony\Component\Yaml\Exception\ParseException;
-require_once __DIR__.'/jsonschema.inc.php';
 
 // liste des signets du menu initial
 $bookmarks = [ 'ex', 'geojson', '..' ];
@@ -45,15 +49,16 @@ $bookmarks = [ 'ex', 'geojson', '..' ];
 // si le paramètre file n'est pas défini alors affichage des signets
 if (!isset($_GET['file']) && !isset($_GET['action'])) {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema</title></head><body>\n";
-  echo "Permet de vérfier la conformité d'une instance à un schéma, de convertir entre JSON et Yaml ",
-        "ou de naviguer dans les répertoires pour sélectionner des fichiers Yaml ou JSON<br>\n";
+  echo "Permet de vérifier la conformité d'une instance à un schéma, de convertir entre JSON et Yaml ",
+        "ou de naviguer dans les répertoires pour sélectionner des fichiers Yaml ou JSON :<br>\n";
   foreach ($bookmarks as $file)
-    echo " - <a href='?action=check&amp;file=$file'>check $file</a>",
-         " / <a href='?action=convert&amp;file=$file'>convert</a><br>\n";
+    echo " - <a href='?action=check&amp;file=$file'>vérifie conformité $file</a>",
+         " / <a href='?action=convert&amp;file=$file'>convertit</a><br>\n";
   echo " - <a href='?action=form'>saisie dans un formulaire de l'instance et du schéma</a><br>\n";
   echo " - <a href='?action=fchoice'>
     saisie dans un formulaire de l'instance et choix d'un schéma prédéfini</a><br>\n";
-  echo " - <a href='?action=convi'>conversion interactive</a><br>\n";
+  echo " - <a href='?action=convi'>conversion interactive</a></p>\n";
+  echo "Permet aussi de <a href='checkjsonptr.php'>vérifier les pointeurs JSON d'un fichier Yaml</a>.<br>\n";
   die();
 }
 
@@ -62,18 +67,18 @@ function form(string $schema, string $instance, bool $schemaOk, bool $instanceOk
   $schemaStyle = $schemaOk ? " style='color:blue;'" : " style='color:orange;'";
   $instanceStyle = $instanceOk ? " style='color:blue;'" : " style='color:orange;'";
   $form = <<<EOT
-<form><table border=1>
-  <tr><td$schemaStyle>
-    Schema:<br>
-    <textarea$schemaStyle name="schema" rows="20" cols="80">$schema</textarea>
-  </td><td$instanceStyle>
-    Instance:<br>
-    <textarea$instanceStyle name="instance" rows="20" cols="80">$instance</textarea>
-  </td></tr>
-<input type='hidden' name='action' value='form'>
-<tr><td colspan=2><center><input type="submit"></center></td></tr>
-</table></form>
-<a href='?'>Retour à l'accueil</a><br>
+    <form><table border=1>
+      <tr><td$schemaStyle>
+        Schema:<br>
+        <textarea$schemaStyle name="schema" rows="20" cols="80">$schema</textarea>
+      </td><td$instanceStyle>
+        Instance:<br>
+        <textarea$instanceStyle name="instance" rows="20" cols="80">$instance</textarea>
+      </td></tr>
+    <input type='hidden' name='action' value='form'>
+    <tr><td colspan=2><center><input type="submit"></center></td></tr>
+    </table></form>
+    <a href='?'>Retour à l'accueil</a><br>
 EOT;
   return $form;
 }
@@ -173,16 +178,16 @@ if (($_GET['action'] ?? null)=='fchoice') {
     $select .= "<option value='$name'".($name==$_GET['schema'] ? ' selected': '').">$title</option>\n";
   $select .= "</select>";
   echo <<<EOT
-<form><table border=1>
-  <tr><td>Schema: $select</td></tr>
-  <tr>
-    <td>Instance:<br><textarea name="instance" rows="20" cols="80">$instanceTxt</textarea></td>
-    <td>Affichage du contenu du schema:<br><textarea rows="20" cols="79">$schemaTxt</textarea></td>
-  </tr>
-<input type='hidden' name='action' value='fchoice'>
-<tr><td><input type="submit"></td></tr>
-</table></form>
-<a href='?'>Retour à l'accueil</a><br>
+    <form><table border=1>
+      <tr><td>Schema: $select</td></tr>
+      <tr>
+        <td>Instance:<br><textarea name="instance" rows="20" cols="80">$instanceTxt</textarea></td>
+        <td>Affichage du contenu du schema:<br><textarea rows="20" cols="79">$schemaTxt</textarea></td>
+      </tr>
+    <input type='hidden' name='action' value='fchoice'>
+    <tr><td><input type="submit"></td></tr>
+    </table></form>
+    <a href='?'>Retour à l'accueil</a><br>
 EOT;
   $schema = new JsonSchema(__DIR__."/$schema");
   try {
@@ -264,10 +269,10 @@ if (($_GET['action'] ?? null)=='convi') {
     <input type='radio'' name='lang' value='php'",($lang=='php')?' checked':'',"> Php
     <input type='radio'' name='lang' value='dump'",($lang=='dump')?' checked':'',"> dump
   </td></tr>
-<tr><td><center><input type='submit'></center></td></tr>
-<input type='hidden' name='action' value='convi'>
-</table></form>
-<a href='?'>Retour à l'accueil</a><br>
+  <tr><td><center><input type='submit'></center></td></tr>
+  <input type='hidden' name='action' value='convi'>
+  </table></form>
+  <a href='?'>Retour à l'accueil</a><br>
 ";
   try {
     $doc = Yaml::parse($text, Yaml::PARSE_DATETIME);
@@ -391,18 +396,24 @@ if ($_GET['action'] == 'check') {
   die();
 }
 
+function fileExtension(string $path): string {
+  if (($pos = strrpos($path, '.')) === false)
+    return '';
+  return substr($path, $pos+1);
+}
+
 // conversion JSON <> Yaml
 if ($_GET['action'] == 'convert') {
   echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>schema convert</title></head><body>\n";
-  if (is_file(__DIR__."/$_GET[file].yaml"))
+  if (in_array(fileExtension($_GET['file']), ['yaml','yml']))
     echo "<pre>",
           json_encode(Yaml::parse(
-            file_get_contents(__DIR__."/$_GET[file].yaml"), Yaml::PARSE_DATETIME),
+            file_get_contents(__DIR__."/$_GET[file]"), Yaml::PARSE_DATETIME),
             JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE),
           "</pre>\n";
-  elseif (is_file(__DIR__."/$_GET[file].json"))
+  elseif (in_array(fileExtension($_GET['file']), ['json','geojson']))
     echo "<pre>",
-         Yaml::dump(json_decode(file_get_contents(__DIR__."/$_GET[file].json"), true), 999, 2),
+         Yaml::dump(json_decode(file_get_contents(__DIR__."/$_GET[file]"), true), 999, 2),
          "</pre>\n";
   else
     die("$_GET[file] ni json ni yaml");

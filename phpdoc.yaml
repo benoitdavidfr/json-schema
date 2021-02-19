@@ -1,4 +1,4 @@
-title: schema - validation de la conformité d'une instance à un schéma JSON
+title: schema - validation de la conformité d'une instance à un schéma JSON + validation de la définition de pointeurs JSON
 path: /schema
 doc: |
   Validation d'un document par rapport à un schéma JSON (https://json-schema.org/)
@@ -35,6 +35,8 @@ doc: |
     - améliorer la gestion des répertoires
       il faudrait plus facilement référencer un chemin dans l'appel de check notamment dans l'appel interactif
 journal: |
+  19/2/2021:
+    ajout checkjsonptr.php
   25/4/2020:
     ajout vérification de la contrainte enum pour un object, un array et un numberOrInteger en plus du string
   3/4/2020:
@@ -57,6 +59,7 @@ journal: |
     création de ce projet
 phpScripts:
   - /schema/index.php
+  - /schema/checkjsonptr.php
   - /schema/tests.php
 phpIncludes:
   - /schema/jsonschema.inc.php
