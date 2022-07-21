@@ -4,12 +4,12 @@ name: jsonschema.inc.php
 title: jsonschema.inc.php - validation de la conformité d'une instance Php à un schéma JSON
 classes:
 doc: |
-  Pour valider la conformité d'une instance définie comme valeur Php à un schéma, il faut:
+  Pour valider la conformité d'un fichier JSON ou Yaml à un schéma, utiliser la méthode statique
+    JsonSchema::autoCheck() qui prend en paramètre une instance et retourne un JsonSchStatus
+  Une autre possibilité pour valider la conformité d'une instance définie comme valeur Php à un schéma, il faut:
     - créer un objet JsonSchema en fournissant le contenu du schema sous la forme d'un array Php
     - appeler sur cet objet la méthode check avec l'instance Php à vérifier
     - analyser le statut retourné (classe JsonSchStatus) par cette vérification
-  Une autre possibilité pour les documents définissant leur schéma est d'utiliser la méthode statique
-    JsonSchema::autoCheck() qui prend en paramètre une instance et retourne un JsonSchStatus
   voir https://json-schema.org/understanding-json-schema/reference/index.html (draft-06)
   La classe est utilisée avec des valeurs Php
   3 types d'erreurs sont gérées:

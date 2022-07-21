@@ -8,8 +8,13 @@ doc: |
       s'il est défini
     - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
     - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
-    - conversion interactive entre JSON, Yaml et du code Php évaluable par eval()
+    - conversion interactive entre JSON, Yaml et valeur Php évaluable par eval("return $value")
 journal: |
+  21/7/2022:
+    - dans l'action convi, dans le dump Yaml, ajout de l'option Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK
+    - dans l'action convi, suppression du return de tête dans format Php
+  14/4/2022:
+    - modif paramètres d'affichage dans ?action=check
   19/2/2021:
     - ajout d'un lien vers checkjsonptr.php
     - correction des conversions (action=convert)
@@ -218,9 +223,9 @@ if (!function_exists('is_assoc_array')) {
 // le par. est-il une liste ? cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
 function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
 
-// fabrique une chaine de code Php correspondant à une valeur issu d'un parse Yaml
-// cette chaine doit pouvoir être évaluée en Php par eval()
-function asPhpSource($value, $level=0): string {
+// fabrique une chaine de code Php correspondant à la valeur $value issue d'un parse Yaml
+// cette chaine doit pouvoir être évaluée en Php par eval() en ajoutant return devant
+function asPhpValue($value, $level=0): string {
   if (is_string($value))
     $src = '"'.str_replace('"','\"',$value).'"';
   elseif (is_numeric($value))
@@ -237,30 +242,28 @@ function asPhpSource($value, $level=0): string {
     if (is_assoc_array($value)) {
       foreach ($value as $k => $v) {
         $src .= str_repeat('  ', $level+1)
-          .asPhpSource($k, $level+1)
+          .asPhpValue($k, $level+1)
           .' => '
-          .asPhpSource($v, $level+1)
+          .asPhpValue($v, $level+1)
           .(is_array($v) ? '' : ",\n");
       }
     }
     else {
       foreach ($value as $v) {
         $src .= str_repeat('  ', $level+1)
-          .asPhpSource($v, $level+1)
+          .asPhpValue($v, $level+1)
           .(is_array($v) ? '' : ",\n");
       }
     }
     $src .= str_repeat('  ', $level).']'.($level ? ",\n" : '');
   }
-  return ($level? '' : 'return ')
-    .$src
-    .($level? '' : ";\n");
+  return $src.($level? '' : ";\n");
 }
 
 
 if (($_GET['action'] ?? null)=='convi') {
-  $text = isset($_GET['txt']) ? $_GET['txt'] : (isset($_POST['txt']) ? $_POST['txt'] : '');
-  $lang = isset($_GET['lang']) ? $_GET['lang'] : (isset($_POST['lang']) ? $_POST['lang'] : 'yaml');
+  $text = $_GET['txt'] ?? $_POST['txt'] ?? '';
+  $lang = $_GET['lang'] ?? $_POST['lang'] ?? 'yaml';
   echo "<form method='POST'><table border=1>
   <tr><td><textarea name='txt' rows='20' cols='100'>$text</textarea></td></tr>
   <tr><td>lang: 
@@ -279,7 +282,7 @@ if (($_GET['action'] ?? null)=='convi') {
   } catch(Exception $e) {
     if (($doc = json_decode($text, true)) === null) {
       try {
-        $doc = eval($text);
+        $doc = eval("return $text");
       } catch(ParseError $e2) {
         echo "Le texte n'est ni du Yaml (",$e->getMessage(),"),<br>",
              "ni du JSON (",json_last_error_msg(),"),<br>",
@@ -291,11 +294,21 @@ if (($_GET['action'] ?? null)=='convi') {
   }
   echo '<pre>';
   switch($lang) {
-    case 'yaml': echo Yaml::dump($doc, 999, 2); break;
-    case 'php': echo asPhpSource($doc); break;
-    case 'dump': var_dump($doc); break;
-    default:
+    case 'yaml': {
+      echo Yaml::dump($doc, 999, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK);
+      break;
+    }
+    case 'php': {
+      echo asPhpValue($doc);
+      break;
+    }
+    case 'dump': {
+      var_dump($doc);
+      break;
+    }
+    default: {
       echo json_encode($doc, JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+    }
   }
   echo "</pre>\n";
   die();
@@ -340,7 +353,7 @@ if ($_GET['action'] == 'check') {
     //die("Erreur de lecture de $_GET[file] : ".$e->getMessage());
     //}
 
-  echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999),"</pre>\n";
+  echo "<pre>",Yaml::dump([$_GET['file']=> $content], 999, 2, Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK),"</pre>\n";
 
   $metaschema = new JsonSchema(__DIR__.'/json-schema.schema.json', $verbose);
   if (!isset($content['$schema']))

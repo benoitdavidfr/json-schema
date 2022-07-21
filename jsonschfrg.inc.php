@@ -5,6 +5,8 @@ title: jsonschfrg.inc.php - définition de la classe JsonSchFragment utilisée p
 classes:
 doc: |
 journal: |
+  12/1/2022:
+    - correction bug dans JsonSchFragment::checkNumberOrInteger()
   22/1/2021:
     - passage à Php 8
     - modif JsonSchFragment::checkArray() pour que le test sur uniqueItems fonctionne sur des non atomes
@@ -453,7 +455,8 @@ class JsonSchFragment {
       return $status;
     
     // vérification du respect de l'enum
-    if (isset($this->def['enum']) && !in_array($instance, $this->def['enum']))
+    // correction bug 12/1/2022
+    if (isset($this->def['enum']) && !in_array($number, $this->def['enum']))
       $status->setError("Erreur $id not in enum=".JsonSch::encode($this->def['enum']));
 
     if (isset($this->def['minimum']) && ($number < $this->def['minimum']))

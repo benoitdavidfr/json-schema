@@ -35,6 +35,10 @@ doc: |
     - améliorer la gestion des répertoires
       il faudrait plus facilement référencer un chemin dans l'appel de check notamment dans l'appel interactif
 journal: |
+  21/7/2022:
+    - amélioration de index.php 
+  15/2/2022:
+    mise à jour du composant symfony/yaml v5.2.1 => v6.0.3 pour compatibilité Php 8.1
   19/2/2021:
     ajout checkjsonptr.php
   25/4/2020:
