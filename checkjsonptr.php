@@ -1,17 +1,18 @@
 <?php
-/*PhpDoc:
-name: checkjsonptr.php
-title: checkjsonptr.php - Vérifie la validité de pointeurs JSON
-classes:
-doc: |
-  Appelé comme script, permet de sélectionner interactivement un fichier Yaml ou JSON pour y vérifier
-  que les pointeurs JSON sont déréfencables.
-  De plus, en fonction des options, tous les fichiers référencés locaux peuvent aussi être vérifiés.
-  Pour faciliter la réutilisation du code, définit la classe JsonPointer regroupant les fonctions peuvant être appelées
-  directement.
-journal: |
-  17-19/2/2021:
-    - création
+/**
+ * checkjsonptr.php - Vérifie la validité de pointeurs JSON
+ *
+ * Appelé comme script, permet de sélectionner interactivement un fichier Yaml ou JSON pour y vérifier
+ * que les pointeurs JSON sont déréfencables.
+ * De plus, en fonction des options, tous les fichiers référencés locaux peuvent aussi être vérifiés.
+ * Pour faciliter la réutilisation du code, définit la classe JsonPointer regroupant les fonctions peuvant être appelées
+ * directement.
+ *
+ * journal:
+ *  1/8/2022:
+ *   - corrections détectées par PhpStan level 16
+ *  17-19/2/2021:
+ *   - création
 */
 
 require_once __DIR__.'/vendor/autoload.php';
@@ -24,17 +25,21 @@ title: class JsonPointer - classe technique regroupant les fonctions comme méth
 methods:
 */
 class JsonPointer {
-  const VERSION = "version du 19/2/2021";
+  const VERSION = "version du 1/8/2022";
   
-  /*PhpDoc: methods
-  name: findJsonPointers
-  title: "static function findJsonPointers(string $path, $yaml): array - retourne les pointeurs JSON du document $yaml"
-  doc: |
-    Trouve dans le document $yaml les pointeurs JSON et en retourne la liste sous la forme [path => pointer]
-    où path est le chemin dans $yaml et pointer est l'array définissant le pointeur.
-    Le paramètre $keys est utilisé pour les appels récursifs.
-  */
-  static function findJsonPointers(string $path, $yaml, array $keys=[]): array {
+  /**
+   * findJsonPointers - retourne les pointeurs JSON du document $yaml
+   *
+   * Trouve dans le document $yaml les pointeurs JSON et en retourne la liste sous la forme [path => pointer]
+   * où path est le chemin dans $yaml et pointer est l'array définissant le pointeur.
+   * Le paramètre $keys est utilisé pour les appels récursifs.
+   *
+   * @param string $path
+   * @param mixed $yaml
+   * @param array<int, string> $keys
+   * @return array<string, array<string, string>>
+   */
+  static function findJsonPointers(string $path, mixed $yaml, array $keys=[]): array {
     //echo "path=$path, keys=",implode('/', $keys),"\n";
     $jptrPath = $path.($keys ? "#/".implode('/', $keys) : '');
     //echo "jptrPath=$jptrPath\n";
@@ -56,17 +61,23 @@ class JsonPointer {
     return $jptrs;
   }
 
-  /*PhpDoc: methods
-  name: deref
-  title: "static function deref(string $filePath, array $yaml, string $fragId): array - Retourne le fragment de $yaml défini par $fragId"
-  doc: |
-    Retourne le fragment de $yaml défini par $fragId, fragId ne commence pas par # mais par /
-    S'il existe bien retourne ['value'=> value], si non retourne ['error'=> path] où path est le chemin dans $yaml
-    qui génère l'erreur.
-    filepath est une URL ou un chemin local et est utilisé pour fabriquer le message d'erreur.
-    $keys et $okkeys sont utilisées pour les appels récursifs,
-    $keys est la liste des clés restantes à tester, $okkeys est la liste des clés testées ok
-  */
+  /**
+   * deref - Retourne le fragment de $yaml défini par $fragId
+   *
+   * Retourne le fragment de $yaml défini par $fragId, fragId ne commence pas par # mais par /
+   * S'il existe bien retourne ['value'=> value], si non retourne ['error'=> path] où path est le chemin dans $yaml
+   * qui génère l'erreur.
+   * filepath est une URL ou un chemin local et est utilisé pour fabriquer le message d'erreur.
+   * $keys et $okkeys sont utilisées pour les appels récursifs,
+   * $keys est la liste des clés restantes à tester, $okkeys est la liste des clés testées ok
+   *
+   * @param string $filePath
+   * @param array<mixed> $yaml
+   * @param string $fragId
+   * @param array<int, string>|null $keys
+   * @param array<int, string> $okkeys
+   * @return array<mixed>
+   */
   static function deref(string $filePath, array $yaml, string $fragId, ?array $keys=null, array $okkeys=[]): array {
     if ($keys === null) {
       $keys = explode('/', $fragId);
@@ -89,24 +100,28 @@ class JsonPointer {
       }
     }
   }
-
-  /*PhpDoc: methods
-  name: pathIsRemote
-  title: "static function pathIsRemote(string $path): bool  - teste si le chemin est distant"
-  */
+  
+  /**
+   * pathIsRemote - teste si le chemin est distant
+   *
+   * @param string $path
+   * @return bool
+   */
   static function pathIsRemote(string $path): bool {
     return (substr($path, 0, 7) == 'http://') || (substr($path, 0, 8) == 'https://');
   }
   
-  /*PhpDoc: methods
-  name: filePath
-  title: "static function filePath(string $ref, string $srcPath): string - extrait du $ref le chemin du fichier et évent. le convertit"
-  doc: |
-    extrait du $ref le chemin du fichier et
-    s'il est relatif, le convertit en absolu, et
-    s'il est local et que $srcPath est distant alors le convertit en distant.
-    $srcPath est le chemin du fichier qui contient le pointeur.
-  */
+  /**
+   * filePath - extrait du $ref le chemin du fichier et évent. le convertit
+   *
+   * extrait du $ref le chemin du fichier et s'il est relatif, le convertit en absolu, et
+   * s'il est local et que $srcPath est distant alors le convertit en distant.
+   * $srcPath est le chemin du fichier qui contient le pointeur.
+   *
+   * @param string $ref
+   * @param string $srcPath
+   * @return string
+   */
   static function filePath(string $ref, string $srcPath): string {
     //echo "filePath($ref, $srcPath)";
     $filePath = self::filePath2($ref, $srcPath);
@@ -132,7 +147,7 @@ class JsonPointer {
       return "$src[scheme]://$src[host]$filePath";
     }
   }
-  static function TEST_filePath() {
+  static function TEST_filePath(): never {
     echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
     self::filePath('#/defs/def0', '/var/www/html/geovect/dcat/testjptr/main.yaml');
     self::filePath('http://host/path#frag', 'xx');
@@ -142,10 +157,12 @@ class JsonPointer {
     die("Fin TEST_filePath\n");
   }
 
-  /*PhpDoc: methods
-  name: decompPath
-  title: "static function decompPath(string $fpath): array  - décompose le chemin en scheme/host/path/search/fragId"
-  */
+  /**
+   * decompPath  - décompose le chemin en scheme/host/path/search/fragId
+   *
+   * @param string $fpath
+   * @return array<string, string>
+   */
   static function decompPath(string $fpath): array {
     //echo "$fpath -> ";
     if ((substr($fpath, 0, 7) == 'http://') || (substr($fpath, 0, 8) == 'https://')) {
@@ -197,7 +214,7 @@ class JsonPointer {
       ];
     }
   }
-  static function TEST_decompPath() { // TEST de decompPath
+  static function TEST_decompPath(): never { // TEST de decompPath
     echo "<!DOCTYPE HTML><html><head><meta charset='UTF-8'><title>checkjptr</title></head><body><pre>\n";
     print_r(self::decompPath('http://host.fr/a/b/c?sss#fff'));
     print_r(self::decompPath('http://host.fr/a/b/c#fff'));
@@ -218,21 +235,27 @@ class JsonPointer {
     die("Fin TEST_decompPath\n");
   }
 
-  /*PhpDoc: methods
-  name: checkJsonPointer
-  title: "static function checkJsonPointer(string $filePath, array $yaml, string $jPtrPath, array $jsonPtr, array $options): bool - vérifie la validité d'un pointeur"
-  doc: |
-    Dans le fichier local dont le chemin est $filePath et le contenu $yaml, vérifie la validité du pointeur $jsonPtr
-    défini au chemin $jPtrPath en utilisant les options $options, Renvoie vrai ssi le pointeur est valide.
-    $filePath est le chemin absolu local défini par rappport à $_SERVER['DOCUMENT_ROOT'].
-    Ne fonctionne pas sur les $filePath distants.
-    Les pointeurs erronés sont affichés.
-    Si $options['showOk'] est défini et vrai alors affiche aussi les pointeurs corrects.
-  
-    Terminologie:
-      - distant (remote) / local - pointeur vers une machine différente de la source ou au sein de la même machine
-      - externe / interne - pointeur vers un autre fichier que la source ou au sein du même fichier
-  */
+  /**
+   * checkJsonPointer- vérifie la validité d'un pointeur
+   *
+   * Dans le fichier local dont le chemin est $filePath et le contenu $yaml, vérifie la validité du pointeur $jsonPtr
+   * défini au chemin $jPtrPath en utilisant les options $options, Renvoie vrai ssi le pointeur est valide.
+   * $filePath est le chemin absolu local défini par rappport à $_SERVER['DOCUMENT_ROOT'].
+   * Ne fonctionne pas sur les $filePath distants.
+   * Les pointeurs erronés sont affichés.
+   *  Si $options['showOk'] est défini et vrai alors affiche aussi les pointeurs corrects.
+   *
+   *  Terminologie:
+   *    * distant (remote) / local - pointeur vers une machine différente de la source ou au sein de la même machine
+   *    * externe / interne - pointeur vers un autre fichier que la source ou au sein du même fichier
+   *
+   * @param string $filePath
+   * @param array<mixed> $yaml
+   * @param string $jPtrPath
+   * @param array<string, mixed> $jsonPtr
+   * @param array<string, bool> $options
+   * @return bool
+   */
   static function checkJsonPointer(string $filePath, array $yaml, string $jPtrPath, array $jsonPtr, array $options): bool {
     //echo "checkJsonPointer($filePath, $jPtrPath, ",json_encode($jsonPtr),")\n";
     $dcmp = self::decompPath($jsonPtr['$ref']);
@@ -279,16 +302,20 @@ class JsonPointer {
     return true;
   }
 
-  /*PhpDoc: methods
-  name: checkFile
-  title: "static function checkFile(string $filePath, array $options): array - Vérifie tous les pointeurs contenus dans le fichier"
-  doc: |
-    Vérifie tous les pointeurs contenus dans le fichier ayant $filePath pour chemin absolu local défini par rappport
-    à $_SERVER['DOCUMENT_ROOT']. $options peut contenir les options 'recursiveOnLocalFile' et 'showOk'.
-    Si options['recursiveOnLocalFile'] est défini et vrai alors teste aussi tous les fichiers référencés.
-    Retourne comme clés la liste des chemins des fichiers testés.
-    Le paramètre $checkedFilePaths est uniquement utilisé pour les appels récursifs.
-  */
+  /**
+   * checkFile - Vérifie tous les pointeurs contenus dans le fichier
+   *
+   * Vérifie tous les pointeurs contenus dans le fichier ayant $filePath pour chemin absolu local défini par rappport
+   * à $_SERVER['DOCUMENT_ROOT']. $options peut contenir les options 'recursiveOnLocalFile' et 'showOk'.
+   * Si options['recursiveOnLocalFile'] est défini et vrai alors teste aussi tous les fichiers référencés.
+   * retourne comme clés la liste des chemins des fichiers testés.
+   * Le paramètre $checkedFilePaths est uniquement utilisé pour les appels récursifs.
+   *
+   * @param string $filePath
+   * @param array<string, bool> $options
+   * @param array<string, 1> $checkedFilePaths
+   * @return array<string, 1>
+   */
   static function checkFile(string $filePath, array $options, array $checkedFilePaths=[]): array {
     $filePathsToCheck = []; // liste en clés des fichiers à tester
     if (($contents = @file_get_contents("$_SERVER[DOCUMENT_ROOT]$filePath")) === false) {
@@ -322,19 +349,22 @@ class JsonPointer {
     return $checkedFilePaths;
   }
   
-  /*PhpDoc: methods
-  name: browseFile
-  title: "static function browseFile(string $dir, array $fileExts, array $optionKeys): void - Navigue dans l'arborescence des fichiers pour en sélectionner un"
-  doc: |
-    Permet de naviguer dans l'arborescence à partir de $dir pour sélectionner un des fichiers ayant pour extension
-    l'une de celles fournies dans le paramètre $fileExts et de sélectionner de plus une ou plusieurs des options
-    dont les clés sont définies dans $optionKeys.
-    Si le chemin passé en paramètre est un répertoire alors La méthode affiche du code Html pour choisir un fichier
-    ou un répertoire en rappelant le script avec en paramètres $_GET file le chemin du fichier ou du répertoire,
-    et options la liste des options sélectionnées. Cette affichage se termine par un die().
-    Si le chemin passé en paramètre $dir n'est pas un répertoire alors n'affiche rien et retourne.
-    La méthode est à rappeler en début de script.
-  */
+  /**
+   * browseFile - Navigue dans l'arborescence des fichiers pour en sélectionner un
+   *
+   * Permet de naviguer dans l'arborescence à partir de $dir pour sélectionner un des fichiers ayant pour extension
+   * l'une de celles fournies dans le paramètre $fileExts et de sélectionner de plus une ou plusieurs des options
+   * dont les clés sont définies dans $optionKeys.
+   * Si le chemin passé en paramètre est un répertoire alors La méthode affiche du code Html pour choisir un fichier
+   * ou un répertoire en rappelant le script avec en paramètres $_GET file le chemin du fichier ou du répertoire,
+   * et options la liste des options sélectionnées. Cette affichage se termine par un die().
+   * Si le chemin passé en paramètre $dir n'est pas un répertoire alors n'affiche rien et retourne.
+   * La méthode est à rappeler en début de script.
+   *
+   * @param string $dir
+   * @param array<int, string> $fileExts
+   * @param array<int, string> $optionKeys
+   */
   static function browseFile(string $dir, array $fileExts, array $optionKeys): void {
     if (!is_dir($dir))
       return;

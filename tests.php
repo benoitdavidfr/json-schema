@@ -63,7 +63,7 @@ if (!isset($_GET['no'])) {
       try {
         $schema = new JsonSchema($sch['schema'], $eltTestVerbose);
         foreach ($sch['tests'] as $notest => $test) {
-          $status = $schema->check(JsonSch::deref($test['data']), [], true);
+          $status = $schema->check(JsonSch::deref($test['data']), [], '');
           $no = "$nosch.$notest";
           echo "<tr><td><a href='?file=$file&amp;no=$no'>$sch[title]</a></td><td>",
                JsonSch::encode($test['data']),"</td>";
@@ -90,7 +90,7 @@ if (!isset($_GET['no'])) {
 }
 
 // réalise un test et affiche le résultat
-function testAndShowResult(string $title, $def, JsonSchema $schema, $data, bool $result, string $comment) {
+function testAndShowResult(string $title, mixed $def, JsonSchema $schema, mixed $data, bool $result, string $comment): void {
   if (is_array($data) && isset($data['$ref'])) {
     echo "deref du fichier ",$data['$ref'],"<br>";
     $data = JsonSch::deref($data);

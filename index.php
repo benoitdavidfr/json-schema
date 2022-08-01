@@ -1,44 +1,43 @@
 <?php
-/*PhpDoc:
-name: index.php
-title: index.php - utilisation de la classe JsonSchema
-doc: |
-  Fournit les fonctionnalités suivantes:
-    - parcours interactif des fichiers json/yaml et sélection d'un fichier pour le valider par rapport à son schema
-      s'il est défini
-    - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
-    - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
-    - conversion interactive entre JSON, Yaml et valeur Php évaluable par eval("return $value")
-journal: |
-  21/7/2022:
-    - dans l'action convi, dans le dump Yaml, ajout de l'option Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK
-    - dans l'action convi, suppression du return de tête dans format Php
-  14/4/2022:
-    - modif paramètres d'affichage dans ?action=check
-  19/2/2021:
-    - ajout d'un lien vers checkjsonptr.php
-    - correction des conversions (action=convert)
-  16/2/2019:
-    ajout possibilité de conversion interactive depuis et vers du code Php évaluable par eval()
-  24/1/2019:
-    utilisation du mot-clé $schema à la place de jSchema
-  22/1/2019:
-    ajout du test de validation des examples et counterexamples des définitions
-  20/1/2019:
-    ajout d'une récupération d'exception dans le check
-    ajout du test de validation des examples et counterexamples
-  9/1/2019
-    ajout conversion interactive JSON <-> Yaml
-  9/1/2019
-    ajout vérification de la conformité d'un schéma au méta-schéma
-  2/1/2019
-    ajout conversion JSON <> Yaml
-    ajout navigation dans les répertoires
-  1/1/2019
-    première version
-includes:
-  - jsonschema.inc.php
-*/
+/**
+ * index.php - utilisation de la classe JsonSchema
+ *
+ * Fournit les fonctionnalités suivantes:
+ *   - parcours interactif des fichiers json/yaml et sélection d'un fichier pour le valider par rapport à son schema
+ *     s'il est défini
+ *   - validation d'un doc par rapport à un schéma tous les 2 saisis interactivement
+ *   - validation d'un doc saisi interactivement par rapport à un schéma prédéfini
+ *   - conversion interactive entre JSON, Yaml et valeur Php évaluable par eval("return $value")
+ * journal:
+ *   1/8/2022:
+ *     - corrections détectées par PhpStan level 16
+ *   21/7/2022:
+ *     - dans l'action convi, dans le dump Yaml, ajout de l'option Yaml::DUMP_MULTI_LINE_LITERAL_BLOCK
+ *     - dans l'action convi, suppression du return de tête dans format Php
+ *   14/4/2022:
+ *     - modif paramètres d'affichage dans ?action=check
+ *   19/2/2021:
+ *     - ajout d'un lien vers checkjsonptr.php
+ *     - correction des conversions (action=convert)
+ *   16/2/2019:
+ *     ajout possibilité de conversion interactive depuis et vers du code Php évaluable par eval()
+ *   24/1/2019:
+ *     utilisation du mot-clé $schema à la place de jSchema
+ *   22/1/2019:
+ *     ajout du test de validation des examples et counterexamples des définitions
+ *   20/1/2019:
+ *     ajout d'une récupération d'exception dans le check
+ *     ajout du test de validation des examples et counterexamples
+ *   9/1/2019
+ *     ajout conversion interactive JSON <-> Yaml
+ *   9/1/2019
+ *     ajout vérification de la conformité d'un schéma au méta-schéma
+ *   2/1/2019
+ *     ajout conversion JSON <> Yaml
+ *     ajout navigation dans les répertoires
+ *   1/1/2019
+ *     première version
+ */
 ini_set('memory_limit', '512M');
 set_time_limit(2*60);
 
@@ -68,7 +67,7 @@ if (!isset($_GET['file']) && !isset($_GET['action'])) {
 }
 
 // fonction générant le formulaire pour l'action form
-function form(string $schema, string $instance, bool $schemaOk, bool $instanceOk) {
+function form(string $schema, string $instance, bool $schemaOk, bool $instanceOk): string {
   $schemaStyle = $schemaOk ? " style='color:blue;'" : " style='color:orange;'";
   $instanceStyle = $instanceOk ? " style='color:blue;'" : " style='color:orange;'";
   $form = <<<EOT
@@ -88,13 +87,13 @@ EOT;
   return $form;
 }
 
-if (0) {
+if (0) { // @phpstan-ignore-line
   $txt = file_get_contents(__DIR__.'/json-schema.schema.json');
   $doc = json_decode($txt, true);
   var_dump($doc);
   die("FIN ligne ".__LINE__);
 }
-if (0) {
+if (0) { // @phpstan-ignore-line
   $doc = JsonSch::file_get_contents(__DIR__.'/json-schema.schema.json');
   var_dump($doc);
   die("FIN ligne ".__LINE__);
@@ -213,19 +212,25 @@ EOT;
   die();
 }
 
-// test si un array est un tableau associatif ou une liste,  [] n'est pas un assoc_array
-if (!function_exists('is_assoc_array')) {
-  function is_assoc_array(array $array): bool {
-    return count(array_diff_key($array, array_keys(array_keys($array))));
-  }
-}
+/**
+ * is_list - le par. est-il une liste ?
+ *
+ * cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
+ *
+ * @param mixed $list
+ */
+function is_list(mixed $list): bool { return is_array($list) && !is_assoc_array($list); }
 
-// le par. est-il une liste ? cad un array dont les clés sont la liste des n-1 premiers entiers positifs, [] est une liste
-function is_list($list): bool { return is_array($list) && !is_assoc_array($list); }
-
-// fabrique une chaine de code Php correspondant à la valeur $value issue d'un parse Yaml
-// cette chaine doit pouvoir être évaluée en Php par eval() en ajoutant return devant
-function asPhpValue($value, $level=0): string {
+/**
+ * asPhpValue - fabrique une chaine de code Php correspondant à la valeur $value issue d'un parse Yaml
+ *
+ * cette chaine doit pouvoir être évaluée en Php par eval() en ajoutant return devant
+ *
+ * @param mixed $value
+ * @param int $level
+ * @return string
+ */
+function asPhpValue(mixed $value, int $level=0): string {
   if (is_string($value))
     $src = '"'.str_replace('"','\"',$value).'"';
   elseif (is_numeric($value))
@@ -257,6 +262,8 @@ function asPhpValue($value, $level=0): string {
     }
     $src .= str_repeat('  ', $level).']'.($level ? ",\n" : '');
   }
+  else
+    throw new Exception("Cas non prévu");
   return $src.($level? '' : ";\n");
 }
 
